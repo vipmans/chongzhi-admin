@@ -3,7 +3,14 @@ import { computed, h, onMounted, reactive, ref } from 'vue';
 import { NButton } from 'naive-ui';
 import type { DataTableColumns } from 'naive-ui';
 import { fetchLedgerEntries } from '@/service/api';
-import { extractPagedData, getDateTimeRange, getEntityId, normalizeQuery, pickValue, toPrettyJson } from '@/utils/admin';
+import {
+  extractPagedData,
+  getDateTimeRange,
+  getEntityId,
+  normalizeQuery,
+  pickValue,
+  toPrettyJson
+} from '@/utils/admin';
 
 const loading = ref(false);
 const rows = ref<Api.Admin.RawRecord[]>([]);

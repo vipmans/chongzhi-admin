@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { fetchAccounts, fetchAdminUsers, fetchChannels, fetchNotificationTasks, fetchOrders, fetchProducts } from '@/service/api';
+import {
+  fetchAccounts,
+  fetchAdminUsers,
+  fetchChannels,
+  fetchNotificationTasks,
+  fetchOrders,
+  fetchProducts
+} from '@/service/api';
 import { extractPagedData } from '@/utils/admin';
 import { useAuthStore } from '@/store/modules/auth';
 

@@ -41,10 +41,6 @@ export function useRouterPush(inSetup = true) {
     return routerPushByKey(key, { query });
   }
 
-  async function toHome() {
-    return routerPushByKey('root');
-  }
-
   async function toLogin(loginModule?: UnionKey.LoginModule, redirectUrl?: string) {
     const options: App.Global.RouterPushOptions = {
       params: {

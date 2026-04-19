@@ -4,7 +4,14 @@ import { useRouter } from 'vue-router';
 import { NButton, NSpace } from 'naive-ui';
 import type { DataTableColumns } from 'naive-ui';
 import { fetchNotificationTasks, retryNotificationTask } from '@/service/api';
-import { extractPagedData, getDateTimeRange, getEntityId, normalizeQuery, pickValue, toPrettyJson } from '@/utils/admin';
+import {
+  extractPagedData,
+  getDateTimeRange,
+  getEntityId,
+  normalizeQuery,
+  pickValue,
+  toPrettyJson
+} from '@/utils/admin';
 
 const router = useRouter();
 const loading = ref(false);

@@ -246,7 +246,12 @@ onMounted(() => {
     <NCard :bordered="false" class="card-wrapper">
       <div class="flex flex-col gap-12px">
         <NSpace wrap>
-          <NInput v-model:value="queryModel.keyword" clearable placeholder="搜索商品编码、名称、省份" class="lg:w-320px" />
+          <NInput
+            v-model:value="queryModel.keyword"
+            clearable
+            placeholder="搜索商品编码、名称、省份"
+            class="lg:w-320px"
+          />
           <NSelect v-model:value="queryModel.carrierCode" :options="carrierOptions" class="min-w-160px" />
           <NSelect v-model:value="queryModel.productType" :options="productTypeOptions" class="min-w-160px" />
           <NSelect v-model:value="queryModel.status" :options="statusOptions" class="min-w-160px" />
@@ -280,7 +285,12 @@ onMounted(() => {
       </div>
     </NCard>
 
-    <NModal v-model:show="modalVisible" preset="card" :title="editingId ? '编辑平台商品' : '新增平台商品'" class="w-640px">
+    <NModal
+      v-model:show="modalVisible"
+      preset="card"
+      :title="editingId ? '编辑平台商品' : '新增平台商品'"
+      class="w-640px"
+    >
       <NForm ref="formRef" :model="formModel" :rules="rules" label-placement="left" label-width="104">
         <NGrid cols="1 s:2" responsive="screen" :x-gap="16">
           <NGi>

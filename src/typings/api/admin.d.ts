@@ -73,6 +73,10 @@ declare namespace Api {
 
     interface DeliveryLogListQuery extends Omit<PagedQuery, 'keyword' | 'status'> {}
 
+    interface SupplierListQuery extends PagedQuery {}
+
+    type SupplierListResponse = PagedResponse<RawRecord> | RawList;
+
     interface LoginPayload {
       username: string;
       password: string;

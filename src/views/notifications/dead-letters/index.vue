@@ -3,7 +3,14 @@ import { computed, h, onMounted, reactive, ref } from 'vue';
 import { NButton } from 'naive-ui';
 import type { DataTableColumns } from 'naive-ui';
 import { fetchNotificationDeadLetters } from '@/service/api';
-import { extractPagedData, getDateTimeRange, getEntityId, normalizeQuery, pickValue, toPrettyJson } from '@/utils/admin';
+import {
+  extractPagedData,
+  getDateTimeRange,
+  getEntityId,
+  normalizeQuery,
+  pickValue,
+  toPrettyJson
+} from '@/utils/admin';
 
 const loading = ref(false);
 const rows = ref<Api.Admin.RawRecord[]>([]);
@@ -98,7 +105,12 @@ onMounted(() => {
     <NCard :bordered="false" class="card-wrapper">
       <div class="flex flex-col gap-12px">
         <NSpace wrap>
-          <NInput v-model:value="queryModel.keyword" clearable placeholder="搜索任务号、业务编号、死信原因" class="lg:w-320px" />
+          <NInput
+            v-model:value="queryModel.keyword"
+            clearable
+            placeholder="搜索任务号、业务编号、死信原因"
+            class="lg:w-320px"
+          />
           <NDatePicker v-model:value="timeRange" type="datetimerange" clearable class="min-w-280px" />
         </NSpace>
         <div class="flex flex-wrap justify-end gap-12px">

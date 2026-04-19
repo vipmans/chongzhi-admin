@@ -291,5 +291,26 @@ export const generatedRoutes: GeneratedRoute[] = [
         }
       }
     ]
+  },
+  {
+    name: 'suppliers',
+    path: '/suppliers',
+    component: 'layout.base',
+    meta: {
+      title: '供应商管理',
+      icon: 'mdi:truck-delivery-outline',
+      order: 4.5
+    },
+    children: [
+      {
+        name: 'suppliers_list',
+        path: '/suppliers/list',
+        component: 'view.suppliers_list',
+        meta: {
+          title: '供应商列表',
+          order: 1
+        }
+      }
+    ]
   }
 ];

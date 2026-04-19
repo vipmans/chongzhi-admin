@@ -51,6 +51,13 @@ export function createChannel(data: Api.Admin.CreateChannelPayload) {
   });
 }
 
+export function fetchSuppliers(params?: Api.Admin.SupplierListQuery) {
+  return request<Api.Admin.SupplierListResponse>({
+    url: '/admin/suppliers',
+    params
+  });
+}
+
 export function fetchChannelDetail(channelId: string) {
   return request<Api.Admin.RawRecord>({
     url: `/admin/channels/${channelId}`

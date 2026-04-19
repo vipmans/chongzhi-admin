@@ -190,7 +190,9 @@ const routeMap: RouteMap = {
   "risk": "/risk",
   "risk_decisions": "/risk/decisions",
   "risk_lists": "/risk/lists",
-  "risk_rules": "/risk/rules"
+  "risk_rules": "/risk/rules",
+  "suppliers": "/suppliers",
+  "suppliers_list": "/suppliers/list"
 };
 
 /**

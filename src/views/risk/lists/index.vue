@@ -175,7 +175,12 @@ onMounted(() => {
     <NCard :bordered="false" class="card-wrapper">
       <div class="flex flex-col gap-12px">
         <NSpace wrap>
-          <NInput v-model:value="queryModel.keyword" clearable placeholder="搜索条目类型、目标值、备注" class="lg:w-320px" />
+          <NInput
+            v-model:value="queryModel.keyword"
+            clearable
+            placeholder="搜索条目类型、目标值、备注"
+            class="lg:w-320px"
+          />
           <NSelect v-model:value="queryModel.listType" :options="listTypeOptions" class="min-w-160px" />
           <NSelect v-model:value="queryModel.status" :options="statusOptions" class="min-w-160px" />
         </NSpace>

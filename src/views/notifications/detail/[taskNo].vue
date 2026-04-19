@@ -2,7 +2,14 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { fetchNotificationTaskDeliveryLogs, fetchNotificationTaskDetail, retryNotificationTask } from '@/service/api';
-import { extractObjectData, extractPagedData, getDateTimeRange, getEntityId, normalizeQuery, pickValue } from '@/utils/admin';
+import {
+  extractObjectData,
+  extractPagedData,
+  getDateTimeRange,
+  getEntityId,
+  normalizeQuery,
+  pickValue
+} from '@/utils/admin';
 
 const route = useRoute();
 const taskNo = computed(() => String(route.params.taskNo || ''));
@@ -97,7 +104,9 @@ onMounted(() => {
         <div class="flex flex-col gap-6px">
           <h2 class="m-0 text-24px text-#0f172a font-700">通知任务 {{ taskNo }}</h2>
           <span class="text-14px text-#64748b">
-            任务状态：{{ pickValue(basicInfo, ['status']) }} | 投递状态：{{ pickValue(deliverySummary, ['deliveryStatus']) }}
+            任务状态：{{ pickValue(basicInfo, ['status']) }} | 投递状态：{{
+              pickValue(deliverySummary, ['deliveryStatus'])
+            }}
           </span>
         </div>
         <NSpace>
@@ -114,10 +123,16 @@ onMounted(() => {
             <NDescriptionsItem label="任务号">{{ pickValue(basicInfo, ['taskNo']) }}</NDescriptionsItem>
             <NDescriptionsItem label="业务编号">{{ pickValue(basicInfo, ['bizNo', 'orderNo']) }}</NDescriptionsItem>
             <NDescriptionsItem label="任务状态">{{ pickValue(basicInfo, ['status']) }}</NDescriptionsItem>
-            <NDescriptionsItem label="目标地址">{{ pickValue(basicInfo, ['targetUrl', 'callbackUrl']) }}</NDescriptionsItem>
+            <NDescriptionsItem label="目标地址">
+              {{ pickValue(basicInfo, ['targetUrl', 'callbackUrl']) }}
+            </NDescriptionsItem>
             <NDescriptionsItem label="投递状态">{{ pickValue(deliverySummary, ['deliveryStatus']) }}</NDescriptionsItem>
-            <NDescriptionsItem label="投递次数">{{ pickValue(deliverySummary, ['attemptCount', 'retryCount']) }}</NDescriptionsItem>
-            <NDescriptionsItem label="最后错误">{{ pickValue(deliverySummary, ['lastError', 'lastResult']) }}</NDescriptionsItem>
+            <NDescriptionsItem label="投递次数">
+              {{ pickValue(deliverySummary, ['attemptCount', 'retryCount']) }}
+            </NDescriptionsItem>
+            <NDescriptionsItem label="最后错误">
+              {{ pickValue(deliverySummary, ['lastError', 'lastResult']) }}
+            </NDescriptionsItem>
           </NDescriptions>
         </NCard>
       </NGi>

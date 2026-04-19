@@ -10,7 +10,14 @@ import {
   markOrderException,
   retryOrderNotify
 } from '@/service/api';
-import { extractObjectData, extractPagedData, getDateTimeRange, getEntityId, normalizeQuery, pickValue } from '@/utils/admin';
+import {
+  extractObjectData,
+  extractPagedData,
+  getDateTimeRange,
+  getEntityId,
+  normalizeQuery,
+  pickValue
+} from '@/utils/admin';
 
 const route = useRoute();
 const orderNo = computed(() => String(route.params.orderNo || ''));
@@ -151,7 +158,9 @@ onMounted(() => {
         <div class="flex flex-col gap-6px">
           <h2 class="m-0 text-24px text-#0f172a font-700">订单 {{ orderNo }}</h2>
           <span class="text-14px text-#64748b">
-            主状态：{{ pickValue(fulfillmentInfo, ['mainStatus']) }} | 供应商状态：{{ pickValue(fulfillmentInfo, ['supplierStatus']) }}
+            主状态：{{ pickValue(fulfillmentInfo, ['mainStatus']) }} | 供应商状态：{{
+              pickValue(fulfillmentInfo, ['supplierStatus'])
+            }}
           </span>
         </div>
         <NSpace>
@@ -186,8 +195,12 @@ onMounted(() => {
           <NDescriptions label-placement="left" bordered :column="1">
             <NDescriptionsItem label="币种">{{ pickValue(paymentInfo, ['currency']) }}</NDescriptionsItem>
             <NDescriptionsItem label="销售金额(分)">{{ pickValue(paymentInfo, ['saleAmountFen']) }}</NDescriptionsItem>
-            <NDescriptionsItem label="采购金额(分)">{{ pickValue(paymentInfo, ['purchaseAmountFen']) }}</NDescriptionsItem>
-            <NDescriptionsItem label="毛利(分)">{{ pickValue(paymentInfo, ['grossProfitAmountFen']) }}</NDescriptionsItem>
+            <NDescriptionsItem label="采购金额(分)">
+              {{ pickValue(paymentInfo, ['purchaseAmountFen']) }}
+            </NDescriptionsItem>
+            <NDescriptionsItem label="毛利(分)">
+              {{ pickValue(paymentInfo, ['grossProfitAmountFen']) }}
+            </NDescriptionsItem>
             <NDescriptionsItem label="支付状态">{{ pickValue(paymentInfo, ['paymentStatus']) }}</NDescriptionsItem>
             <NDescriptionsItem label="退款状态">{{ pickValue(paymentInfo, ['refundStatus']) }}</NDescriptionsItem>
             <NDescriptionsItem label="账务退款状态">{{ pickValue(ledgerInfo, ['refundStatus']) }}</NDescriptionsItem>
@@ -198,12 +211,18 @@ onMounted(() => {
         <NCard title="履约与通知" :bordered="false" class="card-wrapper">
           <NDescriptions label-placement="left" bordered :column="1">
             <NDescriptionsItem label="主状态">{{ pickValue(fulfillmentInfo, ['mainStatus']) }}</NDescriptionsItem>
-            <NDescriptionsItem label="供应商状态">{{ pickValue(fulfillmentInfo, ['supplierStatus']) }}</NDescriptionsItem>
+            <NDescriptionsItem label="供应商状态">
+              {{ pickValue(fulfillmentInfo, ['supplierStatus']) }}
+            </NDescriptionsItem>
             <NDescriptionsItem label="监控状态">{{ pickValue(fulfillmentInfo, ['monitorStatus']) }}</NDescriptionsItem>
             <NDescriptionsItem label="异常标签">{{ pickValue(fulfillmentInfo, ['exceptionTag']) }}</NDescriptionsItem>
             <NDescriptionsItem label="通知状态">{{ pickValue(notificationInfo, ['notifyStatus']) }}</NDescriptionsItem>
-            <NDescriptionsItem label="最新任务号">{{ pickValue(notificationInfo, ['latestTaskNo']) }}</NDescriptionsItem>
-            <NDescriptionsItem label="最新任务状态">{{ pickValue(notificationInfo, ['latestTaskStatus']) }}</NDescriptionsItem>
+            <NDescriptionsItem label="最新任务号">
+              {{ pickValue(notificationInfo, ['latestTaskNo']) }}
+            </NDescriptionsItem>
+            <NDescriptionsItem label="最新任务状态">
+              {{ pickValue(notificationInfo, ['latestTaskStatus']) }}
+            </NDescriptionsItem>
             <NDescriptionsItem label="回调地址">{{ pickValue(notificationInfo, ['callbackUrl']) }}</NDescriptionsItem>
           </NDescriptions>
         </NCard>
@@ -264,7 +283,13 @@ onMounted(() => {
     </NCard>
 
     <NModal v-model:show="exceptionVisible" preset="card" title="标记订单异常" class="w-480px">
-      <NForm ref="exceptionFormRef" :model="exceptionForm" :rules="exceptionRules" label-placement="left" label-width="96">
+      <NForm
+        ref="exceptionFormRef"
+        :model="exceptionForm"
+        :rules="exceptionRules"
+        label-placement="left"
+        label-width="96"
+      >
         <NFormItem label="异常标签" path="exceptionTag">
           <NInput v-model:value="exceptionForm.exceptionTag" placeholder="例如 SUPPLIER_TIMEOUT" />
         </NFormItem>

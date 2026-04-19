@@ -15,7 +15,7 @@ import {
   saveChannelPrice,
   saveChannelProduct
 } from '@/service/api';
-import { extractListData, extractObjectData, extractPagedData, getEntityId, normalizeQuery, pickValue } from '@/utils/admin';
+import { extractListData, extractObjectData, extractPagedData, getEntityId, pickValue } from '@/utils/admin';
 
 const route = useRoute();
 const channelId = computed(() => String(route.params.id || ''));
@@ -220,9 +220,13 @@ onMounted(() => {
     <NCard :bordered="false" class="card-wrapper" :loading="loading">
       <div class="flex flex-col gap-8px lg:flex-row lg:items-center lg:justify-between">
         <div class="flex flex-col gap-6px">
-          <h2 class="m-0 text-24px text-#0f172a font-700">{{ pickValue(channel, ['channelName', 'name'], '渠道详情') }}</h2>
+          <h2 class="m-0 text-24px text-#0f172a font-700">
+            {{ pickValue(channel, ['channelName', 'name'], '渠道详情') }}
+          </h2>
           <span class="text-14px text-#64748b">
-            渠道编码：{{ pickValue(channel, ['channelCode', 'code']) }} | 渠道类型：{{ pickValue(channel, ['channelType', 'type']) }}
+            渠道编码：{{ pickValue(channel, ['channelCode', 'code']) }} | 渠道类型：{{
+              pickValue(channel, ['channelType', 'type'])
+            }}
           </span>
         </div>
         <NButton @click="loadDetail">刷新详情</NButton>
@@ -268,7 +272,13 @@ onMounted(() => {
           </NGi>
           <NGi>
             <NCard title="新增凭证" :bordered="false" class="card-wrapper">
-              <NForm ref="apiKeyFormRef" :model="apiKeyForm" :rules="apiKeyRules" label-placement="left" label-width="96">
+              <NForm
+                ref="apiKeyFormRef"
+                :model="apiKeyForm"
+                :rules="apiKeyRules"
+                label-placement="left"
+                label-width="96"
+              >
                 <NFormItem label="AccessKey" path="accessKey">
                   <NInput v-model:value="apiKeyForm.accessKey" />
                 </NFormItem>
@@ -286,7 +296,13 @@ onMounted(() => {
         <NGrid cols="1 l:2" responsive="screen" :x-gap="16" :y-gap="16">
           <NGi>
             <NCard title="回调参数" :bordered="false" class="card-wrapper">
-              <NForm ref="callbackFormRef" :model="callbackForm" :rules="callbackRules" label-placement="left" label-width="110">
+              <NForm
+                ref="callbackFormRef"
+                :model="callbackForm"
+                :rules="callbackRules"
+                label-placement="left"
+                label-width="110"
+              >
                 <NFormItem label="回调地址" path="callbackUrl">
                   <NInput v-model:value="callbackForm.callbackUrl" />
                 </NFormItem>
@@ -311,7 +327,13 @@ onMounted(() => {
           <NGi>
             <NSpace vertical :size="16">
               <NCard title="商品授权" :bordered="false" class="card-wrapper">
-                <NForm ref="productFormRef" :model="productAuthForm" :rules="strategyRules" label-placement="left" label-width="96">
+                <NForm
+                  ref="productFormRef"
+                  :model="productAuthForm"
+                  :rules="strategyRules"
+                  label-placement="left"
+                  label-width="96"
+                >
                   <NFormItem label="平台商品" path="productId">
                     <NSelect v-model:value="productAuthForm.productId" :options="productOptions" />
                   </NFormItem>
@@ -323,7 +345,13 @@ onMounted(() => {
               </NCard>
 
               <NCard title="销售价策略" :bordered="false" class="card-wrapper">
-                <NForm ref="priceFormRef" :model="priceForm" :rules="priceRules" label-placement="left" label-width="96">
+                <NForm
+                  ref="priceFormRef"
+                  :model="priceForm"
+                  :rules="priceRules"
+                  label-placement="left"
+                  label-width="96"
+                >
                   <NFormItem label="平台商品" path="productId">
                     <NSelect v-model:value="priceForm.productId" :options="productOptions" />
                   </NFormItem>
@@ -345,7 +373,13 @@ onMounted(() => {
               </NCard>
 
               <NCard title="限额策略" :bordered="false" class="card-wrapper">
-                <NForm ref="limitFormRef" :model="limitForm" :rules="limitRules" label-placement="left" label-width="96">
+                <NForm
+                  ref="limitFormRef"
+                  :model="limitForm"
+                  :rules="limitRules"
+                  label-placement="left"
+                  label-width="96"
+                >
                   <NFormItem label="单笔限额" path="singleLimit">
                     <NInputNumber v-model:value="limitForm.singleLimit" :min="0" class="w-full" />
                   </NFormItem>
@@ -373,7 +407,13 @@ onMounted(() => {
 
       <NTabPane name="recharge" tab="账户充值">
         <NCard title="渠道账户充值" :bordered="false" class="card-wrapper">
-          <NForm ref="rechargeFormRef" :model="rechargeForm" :rules="rechargeRules" label-placement="left" label-width="96">
+          <NForm
+            ref="rechargeFormRef"
+            :model="rechargeForm"
+            :rules="rechargeRules"
+            label-placement="left"
+            label-width="96"
+          >
             <NFormItem label="充值金额" path="amount">
               <NInputNumber v-model:value="rechargeForm.amount" :min="0.01" class="w-full" />
             </NFormItem>
