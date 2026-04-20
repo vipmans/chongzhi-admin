@@ -46,6 +46,7 @@ declare module "@elegant-router/types" {
     "risk_lists": "/risk/lists";
     "risk_rules": "/risk/rules";
     "suppliers": "/suppliers";
+    "suppliers_detail": "/suppliers/detail/:id";
     "suppliers_list": "/suppliers/list";
   };
 
@@ -129,6 +130,7 @@ declare module "@elegant-router/types" {
     | "risk_decisions"
     | "risk_lists"
     | "risk_rules"
+    | "suppliers_detail"
     | "suppliers_list"
   >;
 

@@ -93,6 +93,37 @@ export function pickNumber(record: Api.Admin.RawRecord, keys: string[], fallback
   return fallback;
 }
 
+export function toBoolean(value: unknown) {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'number') {
+    return value !== 0;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    return ['true', '1', 'yes', 'y', 'active', 'enabled', 'supported'].includes(normalized);
+  }
+
+  return false;
+}
+
+export function formatAmountFen(value: unknown, fallback = '-') {
+  const amount = Number(value);
+
+  if (Number.isNaN(amount)) {
+    return fallback;
+  }
+
+  return `¥${(amount / 100).toFixed(2)} (${amount}分)`;
+}
+
+export function formatBooleanLabel(value: unknown, positive = '是', negative = '否') {
+  return toBoolean(value) ? positive : negative;
+}
+
 export function getEntityId(record: Api.Admin.RawRecord, keys: string[]) {
   for (const key of keys) {
     const value = record[key];

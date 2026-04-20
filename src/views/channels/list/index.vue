@@ -4,34 +4,66 @@ import { useRouter } from 'vue-router';
 import { NButton, NSpace } from 'naive-ui';
 import type { DataTableColumns, FormInst } from 'naive-ui';
 import { createChannel, fetchChannels } from '@/service/api';
-import { extractPagedData, getEntityId, normalizeQuery, pickValue, toPrettyJson } from '@/utils/admin';
+import {
+  extractPagedData,
+  formatBooleanLabel,
+  getEntityId,
+  normalizeQuery,
+  pickValue,
+  toBoolean,
+  toPrettyJson
+} from '@/utils/admin';
 
 const router = useRouter();
+
 const loading = ref(false);
 const submitting = ref(false);
 const createVisible = ref(false);
 const rawVisible = ref(false);
 const rawRecord = ref<Api.Admin.RawRecord>({});
 const formRef = ref<FormInst | null>(null);
+
 const rows = ref<Api.Admin.RawRecord[]>([]);
 const total = ref(0);
 const pageNum = ref(1);
 const pageSize = ref(20);
 
-const queryModel = reactive({
+const queryModel = reactive<Api.Admin.ChannelListQuery>({
   keyword: '',
-  status: ''
+  status: '',
+  cooperationStatus: '',
+  protocolType: '',
+  channelType: ''
 });
 
 const formModel = reactive<Api.Admin.CreateChannelPayload>({
   channelCode: '',
   channelName: '',
-  channelType: ''
+  channelType: '',
+  contactName: '',
+  contactPhone: '',
+  contactEmail: '',
+  baseUrl: '',
+  protocolType: '',
+  accessAccount: '',
+  accessPassword: '',
+  cooperationStatus: '',
+  supportsConsumptionLog: false,
+  settlementMode: '',
+  status: 'ACTIVE',
+  remark: ''
 });
 
 const statusOptions = [
   { label: '全部状态', value: '' },
   { label: 'ACTIVE', value: 'ACTIVE' },
+  { label: 'INACTIVE', value: 'INACTIVE' }
+];
+
+const cooperationOptions = [
+  { label: '全部合作状态', value: '' },
+  { label: 'ACTIVE', value: 'ACTIVE' },
+  { label: 'PAUSED', value: 'PAUSED' },
   { label: 'INACTIVE', value: 'INACTIVE' }
 ];
 
@@ -52,20 +84,35 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
     render: row => pickValue(row, ['channelType', 'type'])
   },
   {
-    key: 'status',
-    title: '状态',
-    render: row => pickValue(row, ['status', 'enabled'])
+    key: 'contactName',
+    title: '联系人',
+    render: row => pickValue(row, ['contactName'])
   },
   {
-    key: 'createdAt',
-    title: '创建时间',
-    render: row => pickValue(row, ['createdAt', 'createTime'])
+    key: 'protocolType',
+    title: '协议',
+    render: row => pickValue(row, ['protocolType'])
+  },
+  {
+    key: 'cooperationStatus',
+    title: '合作状态',
+    render: row => pickValue(row, ['cooperationStatus'])
+  },
+  {
+    key: 'supportsConsumptionLog',
+    title: '消费日志',
+    render: row => formatBooleanLabel(row.supportsConsumptionLog, '支持', '不支持')
+  },
+  {
+    key: 'updatedAt',
+    title: '更新时间',
+    render: row => pickValue(row, ['updatedAt', 'createdAt'])
   },
   {
     key: 'actions',
     title: '操作',
     render: row => {
-      const id = getEntityId(row, ['channelId', 'id', 'channelCode']);
+      const channelId = getEntityId(row, ['channelId', 'id', 'channelCode']);
 
       return h(NSpace, { size: 8 }, () => [
         h(
@@ -74,9 +121,9 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
             size: 'small',
             type: 'primary',
             ghost: true,
-            onClick: () => router.push(`/channels/detail/${id}`)
+            onClick: () => router.push(`/channels/detail/${channelId}`)
           },
-          { default: () => '渠道详情' }
+          { default: () => '详情' }
         ),
         h(
           NButton,
@@ -101,10 +148,26 @@ const rules: Record<string, App.Global.FormRule[]> = {
   channelType: [{ required: true, message: '请输入渠道类型', trigger: 'blur' }]
 };
 
-function openCreate() {
+function resetForm() {
   formModel.channelCode = '';
   formModel.channelName = '';
   formModel.channelType = '';
+  formModel.contactName = '';
+  formModel.contactPhone = '';
+  formModel.contactEmail = '';
+  formModel.baseUrl = '';
+  formModel.protocolType = '';
+  formModel.accessAccount = '';
+  formModel.accessPassword = '';
+  formModel.cooperationStatus = '';
+  formModel.supportsConsumptionLog = false;
+  formModel.settlementMode = '';
+  formModel.status = 'ACTIVE';
+  formModel.remark = '';
+}
+
+function openCreate() {
+  resetForm();
   createVisible.value = true;
 }
 
@@ -138,6 +201,9 @@ async function handleSearch() {
 async function handleReset() {
   queryModel.keyword = '';
   queryModel.status = '';
+  queryModel.cooperationStatus = '';
+  queryModel.protocolType = '';
+  queryModel.channelType = '';
   pageNum.value = 1;
   await loadChannels();
 }
@@ -158,12 +224,28 @@ async function submitCreate() {
   submitting.value = true;
 
   try {
-    await createChannel({
-      channelCode: formModel.channelCode.trim(),
-      channelName: formModel.channelName.trim(),
-      channelType: formModel.channelType.trim()
-    });
-    window.$message?.success('渠道主体创建成功');
+    await createChannel(
+      normalizeQuery({
+        ...formModel,
+        channelCode: formModel.channelCode.trim(),
+        channelName: formModel.channelName.trim(),
+        channelType: formModel.channelType.trim(),
+        contactName: formModel.contactName?.trim(),
+        contactPhone: formModel.contactPhone?.trim(),
+        contactEmail: formModel.contactEmail?.trim(),
+        baseUrl: formModel.baseUrl?.trim(),
+        protocolType: formModel.protocolType?.trim(),
+        accessAccount: formModel.accessAccount?.trim(),
+        accessPassword: formModel.accessPassword?.trim(),
+        cooperationStatus: formModel.cooperationStatus?.trim(),
+        settlementMode: formModel.settlementMode?.trim(),
+        status: formModel.status?.trim(),
+        remark: formModel.remark?.trim(),
+        supportsConsumptionLog: toBoolean(formModel.supportsConsumptionLog)
+      }) as Api.Admin.CreateChannelPayload
+    );
+
+    window.$message?.success('渠道创建成功');
     createVisible.value = false;
     pageNum.value = 1;
     await loadChannels();
@@ -181,24 +263,32 @@ onMounted(() => {
   <NSpace vertical :size="16">
     <NCard :bordered="false" class="card-wrapper">
       <div class="flex flex-col gap-12px">
-        <NSpace wrap>
-          <NInput
-            v-model:value="queryModel.keyword"
-            clearable
-            placeholder="搜索渠道编码、名称、类型"
-            class="lg:w-320px"
-          />
-          <NSelect v-model:value="queryModel.status" :options="statusOptions" class="min-w-160px" />
-        </NSpace>
+        <NGrid cols="1 s:2 m:5" responsive="screen" :x-gap="12" :y-gap="12">
+          <NGi>
+            <NInput v-model:value="queryModel.keyword" clearable placeholder="搜索编码、名称、联系人" />
+          </NGi>
+          <NGi>
+            <NSelect v-model:value="queryModel.status" :options="statusOptions" />
+          </NGi>
+          <NGi>
+            <NSelect v-model:value="queryModel.cooperationStatus" :options="cooperationOptions" />
+          </NGi>
+          <NGi>
+            <NInput v-model:value="queryModel.protocolType" clearable placeholder="协议类型" />
+          </NGi>
+          <NGi>
+            <NInput v-model:value="queryModel.channelType" clearable placeholder="渠道类型" />
+          </NGi>
+        </NGrid>
         <div class="flex flex-wrap justify-end gap-12px">
           <NButton @click="handleReset">重置</NButton>
           <NButton @click="handleSearch">查询</NButton>
-          <NButton type="primary" @click="openCreate">新增渠道主体</NButton>
+          <NButton type="primary" @click="openCreate">新增渠道</NButton>
         </div>
       </div>
     </NCard>
 
-    <NCard title="渠道主体列表" :bordered="false" class="card-wrapper">
+    <NCard title="渠道列表" :bordered="false" class="card-wrapper">
       <NDataTable
         :columns="columns"
         :data="rows"
@@ -219,16 +309,82 @@ onMounted(() => {
       </div>
     </NCard>
 
-    <NModal v-model:show="createVisible" preset="card" title="新增渠道主体" class="w-520px">
-      <NForm ref="formRef" :model="formModel" :rules="rules" label-placement="left" label-width="96">
-        <NFormItem label="渠道编码" path="channelCode">
-          <NInput v-model:value="formModel.channelCode" />
-        </NFormItem>
-        <NFormItem label="渠道名称" path="channelName">
-          <NInput v-model:value="formModel.channelName" />
-        </NFormItem>
-        <NFormItem label="渠道类型" path="channelType">
-          <NInput v-model:value="formModel.channelType" placeholder="例如 API / INTERNAL" />
+    <NModal v-model:show="createVisible" preset="card" title="新增渠道" class="w-760px">
+      <NForm ref="formRef" :model="formModel" :rules="rules" label-placement="left" label-width="110">
+        <NGrid cols="1 s:2" responsive="screen" :x-gap="16">
+          <NGi>
+            <NFormItem label="渠道编码" path="channelCode">
+              <NInput v-model:value="formModel.channelCode" />
+            </NFormItem>
+          </NGi>
+          <NGi>
+            <NFormItem label="渠道名称" path="channelName">
+              <NInput v-model:value="formModel.channelName" />
+            </NFormItem>
+          </NGi>
+          <NGi>
+            <NFormItem label="渠道类型" path="channelType">
+              <NInput v-model:value="formModel.channelType" placeholder="例如 API / ENTERPRISE" />
+            </NFormItem>
+          </NGi>
+          <NGi>
+            <NFormItem label="联系人">
+              <NInput v-model:value="formModel.contactName" />
+            </NFormItem>
+          </NGi>
+          <NGi>
+            <NFormItem label="联系电话">
+              <NInput v-model:value="formModel.contactPhone" />
+            </NFormItem>
+          </NGi>
+          <NGi>
+            <NFormItem label="联系邮箱">
+              <NInput v-model:value="formModel.contactEmail" />
+            </NFormItem>
+          </NGi>
+          <NGi>
+            <NFormItem label="接口地址">
+              <NInput v-model:value="formModel.baseUrl" />
+            </NFormItem>
+          </NGi>
+          <NGi>
+            <NFormItem label="协议类型">
+              <NInput v-model:value="formModel.protocolType" />
+            </NFormItem>
+          </NGi>
+          <NGi>
+            <NFormItem label="接入账号">
+              <NInput v-model:value="formModel.accessAccount" />
+            </NFormItem>
+          </NGi>
+          <NGi>
+            <NFormItem label="接入密码">
+              <NInput v-model:value="formModel.accessPassword" type="password" show-password-on="click" />
+            </NFormItem>
+          </NGi>
+          <NGi>
+            <NFormItem label="合作状态">
+              <NInput v-model:value="formModel.cooperationStatus" placeholder="例如 ACTIVE / PAUSED" />
+            </NFormItem>
+          </NGi>
+          <NGi>
+            <NFormItem label="结算模式">
+              <NInput v-model:value="formModel.settlementMode" />
+            </NFormItem>
+          </NGi>
+          <NGi>
+            <NFormItem label="消费日志能力">
+              <NSwitch v-model:value="formModel.supportsConsumptionLog" />
+            </NFormItem>
+          </NGi>
+          <NGi>
+            <NFormItem label="状态">
+              <NInput v-model:value="formModel.status" />
+            </NFormItem>
+          </NGi>
+        </NGrid>
+        <NFormItem label="备注">
+          <NInput v-model:value="formModel.remark" type="textarea" :autosize="{ minRows: 3, maxRows: 5 }" />
         </NFormItem>
       </NForm>
       <template #footer>

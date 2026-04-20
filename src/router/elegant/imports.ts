@@ -36,5 +36,6 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   risk_decisions: () => import("@/views/risk/decisions/index.vue"),
   risk_lists: () => import("@/views/risk/lists/index.vue"),
   risk_rules: () => import("@/views/risk/rules/index.vue"),
+  suppliers_detail: () => import("@/views/suppliers/detail/[id].vue"),
   suppliers_list: () => import("@/views/suppliers/list/index.vue"),
 };

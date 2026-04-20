@@ -36,7 +36,7 @@ export function createAdminRole(data: Api.Admin.CreateRolePayload) {
   });
 }
 
-export function fetchChannels(params?: Api.Admin.PagedQuery) {
+export function fetchChannels(params?: Api.Admin.ChannelListQuery) {
   return request<Api.Admin.PagedResponse<Api.Admin.RawRecord>>({
     url: '/admin/channels',
     params
@@ -58,14 +58,91 @@ export function fetchSuppliers(params?: Api.Admin.SupplierListQuery) {
   });
 }
 
+export function createSupplier(data: Api.Admin.SaveSupplierPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: '/admin/suppliers',
+    method: 'post',
+    data
+  });
+}
+
+export function fetchSupplierDetail(supplierId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/suppliers/${supplierId}`
+  });
+}
+
+export function updateSupplier(supplierId: string, data: Api.Admin.SaveSupplierPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/suppliers/${supplierId}`,
+    method: 'put',
+    data
+  });
+}
+
+export function fetchSupplierHealth(supplierId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/suppliers/${supplierId}/health`
+  });
+}
+
+export function fetchSupplierBalance(supplierId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/suppliers/${supplierId}/balance`
+  });
+}
+
+export function refreshSupplierBalance(supplierId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/suppliers/${supplierId}/balance/refresh`,
+    method: 'post'
+  });
+}
+
+export function fetchSupplierProducts(supplierId: string, params?: Api.Admin.SupplierProductListQuery) {
+  return request<Api.Admin.RawList>({
+    url: `/admin/suppliers/${supplierId}/products`,
+    params
+  });
+}
+
+export function fetchSupplierRechargeRecords(supplierId: string) {
+  return request<Api.Admin.RawList>({
+    url: `/admin/suppliers/${supplierId}/recharge-records`
+  });
+}
+
+export function createSupplierRechargeRecord(supplierId: string, data: Api.Admin.SupplierRechargeRecordPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/suppliers/${supplierId}/recharge-records`,
+    method: 'post',
+    data
+  });
+}
+
+export function fetchSupplierConsumptionLogs(supplierId: string, params?: Api.Admin.SupplierConsumptionLogListQuery) {
+  return request<Api.Admin.RawList>({
+    url: `/admin/suppliers/${supplierId}/consumption-logs`,
+    params
+  });
+}
+
 export function fetchChannelDetail(channelId: string) {
   return request<Api.Admin.RawRecord>({
     url: `/admin/channels/${channelId}`
   });
 }
 
+export function updateChannel(channelId: string, data: Api.Admin.SaveChannelPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/channels/${channelId}`,
+    method: 'put',
+    data
+  });
+}
+
 export function fetchChannelApiKeys(channelId: string) {
-  return request<Api.Admin.RawRecord[]>({
+  return request<Api.Admin.RawList>({
     url: `/admin/channels/${channelId}/api-keys`
   });
 }
@@ -98,6 +175,12 @@ export function fetchChannelOrderPolicy(channelId: string) {
   });
 }
 
+export function fetchChannelSplitPolicy(channelId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/channels/${channelId}/split-policy`
+  });
+}
+
 export function saveChannelProduct(data: Api.Admin.SaveChannelProductPayload) {
   return request<Api.Admin.RawRecord>({
     url: '/admin/channel-products',
@@ -122,11 +205,38 @@ export function saveChannelLimit(data: Api.Admin.SaveChannelLimitPayload) {
   });
 }
 
+export function saveChannelSplitPolicy(channelId: string, data: Api.Admin.SaveChannelSplitPolicyPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/channels/${channelId}/split-policy`,
+    method: 'put',
+    data
+  });
+}
+
 export function rechargeChannel(channelId: string, data: Api.Admin.RechargeChannelPayload) {
   return request<Api.Admin.RawRecord>({
     url: `/admin/channels/${channelId}/recharge`,
     method: 'post',
     data
+  });
+}
+
+export function fetchChannelProducts(channelId: string, params?: Api.Admin.ChannelProductListQuery) {
+  return request<Api.Admin.RawList>({
+    url: `/admin/channels/${channelId}/products`,
+    params
+  });
+}
+
+export function fetchChannelBalance(channelId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/channels/${channelId}/balance`
+  });
+}
+
+export function fetchChannelRechargeRecords(channelId: string) {
+  return request<Api.Admin.RawList>({
+    url: `/admin/channels/${channelId}/recharge-records`
   });
 }
 

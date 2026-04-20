@@ -192,6 +192,7 @@ const routeMap: RouteMap = {
   "risk_lists": "/risk/lists",
   "risk_rules": "/risk/rules",
   "suppliers": "/suppliers",
+  "suppliers_detail": "/suppliers/detail/:id",
   "suppliers_list": "/suppliers/list"
 };
 

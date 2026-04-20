@@ -105,7 +105,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     path: '/finance',
     component: 'layout.base',
     meta: {
-      title: '账务中心',
+      title: '财务中心',
       icon: 'mdi:wallet-outline',
       order: 7
     },
@@ -152,7 +152,7 @@ export const generatedRoutes: GeneratedRoute[] = [
   {
     name: 'login',
     path: '/login/:module(pwd-login)?',
-    component: 'layout.blank$view.login',
+    component: 'layout.base$view.login',
     props: true,
     meta: {
       title: '登录',
@@ -176,7 +176,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         path: '/notifications/dead-letters',
         component: 'view.notifications_dead-letters',
         meta: {
-          title: 'notifications_dead-letters',
+          title: '通知死信',
           order: 2
         }
       },
@@ -302,6 +302,16 @@ export const generatedRoutes: GeneratedRoute[] = [
       order: 4.5
     },
     children: [
+      {
+        name: 'suppliers_detail',
+        path: '/suppliers/detail/:id',
+        component: 'view.suppliers_detail',
+        meta: {
+          title: '供应商详情',
+          hideInMenu: true,
+          activeMenu: 'suppliers_list'
+        }
+      },
       {
         name: 'suppliers_list',
         path: '/suppliers/list',

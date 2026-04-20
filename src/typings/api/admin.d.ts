@@ -41,6 +41,12 @@ declare namespace Api {
       status?: ProductStatus;
     }
 
+    interface ChannelListQuery extends PagedQuery {
+      cooperationStatus?: string;
+      protocolType?: string;
+      channelType?: string;
+    }
+
     interface OrderListQuery extends PagedQuery {
       orderNo?: string;
       channelOrderNo?: string;
@@ -73,7 +79,33 @@ declare namespace Api {
 
     interface DeliveryLogListQuery extends Omit<PagedQuery, 'keyword' | 'status'> {}
 
-    interface SupplierListQuery extends PagedQuery {}
+    interface SupplierListQuery extends Omit<PagedQuery, 'status' | 'startTime' | 'endTime'> {
+      cooperationStatus?: string;
+      healthStatus?: string;
+      protocolType?: string;
+    }
+
+    interface SupplierProductListQuery {
+      carrierCode?: CarrierCode | string;
+      province?: string;
+      faceValue?: number;
+      status?: string;
+      updatedStartTime?: string;
+      updatedEndTime?: string;
+    }
+
+    interface ChannelProductListQuery {
+      carrierCode?: CarrierCode | string;
+      province?: string;
+      faceValue?: number;
+      status?: string;
+    }
+
+    interface SupplierConsumptionLogListQuery extends Omit<PagedQuery, 'keyword' | 'status' | 'sortBy' | 'sortOrder'> {
+      mobile?: string;
+      orderNo?: string;
+      supplierOrderNo?: string;
+    }
 
     type SupplierListResponse = PagedResponse<RawRecord> | RawList;
 
@@ -102,11 +134,45 @@ declare namespace Api {
       roleName: string;
     }
 
+    interface SaveSupplierPayload {
+      supplierCode?: string;
+      supplierName: string;
+      contactName?: string;
+      contactPhone?: string;
+      contactEmail?: string;
+      baseUrl?: string;
+      protocolType: string;
+      credentialMode?: string;
+      accessAccount?: string;
+      accessPassword?: string;
+      cooperationStatus?: string;
+      supportsBalanceQuery?: boolean;
+      supportsRechargeRecords?: boolean;
+      supportsConsumptionLog?: boolean;
+      remark?: string;
+      healthStatus?: string;
+      status?: string;
+    }
+
     interface CreateChannelPayload {
       channelCode: string;
       channelName: string;
       channelType: string;
+      contactName?: string;
+      contactPhone?: string;
+      contactEmail?: string;
+      baseUrl?: string;
+      protocolType?: string;
+      accessAccount?: string;
+      accessPassword?: string;
+      cooperationStatus?: string;
+      supportsConsumptionLog?: boolean;
+      settlementMode?: string;
+      status?: string;
+      remark?: string;
     }
+
+    type SaveChannelPayload = CreateChannelPayload;
 
     interface CreateChannelApiKeyPayload {
       channelId: string;
@@ -140,9 +206,31 @@ declare namespace Api {
       qpsLimit: number;
     }
 
+    interface SaveChannelSplitPolicyPayload {
+      enabled: boolean;
+      allowedFaceValues: number[];
+      preferMaxSingleFaceValue: boolean;
+      maxSplitPieces: number;
+      provinceOverride?: string;
+      carrierOverride?: string;
+    }
+
     interface RechargeChannelPayload {
       amount: number;
       remark?: string;
+    }
+
+    interface SupplierRechargeRecordPayload {
+      rechargeType: string;
+      amountFen: number;
+      currency?: string;
+      beforeBalanceFen?: number;
+      afterBalanceFen?: number;
+      recordSource: string;
+      supplierTradeNo?: string;
+      remark?: string;
+      rawPayload?: JsonObject;
+      status?: string;
     }
 
     type CarrierCode = 'CMCC' | 'CTCC' | 'CUCC' | 'CBN';
