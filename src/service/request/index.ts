@@ -101,10 +101,14 @@ export const request = createFlatRequest(
 
       let message = error.message;
       let backendErrorCode = '';
+      const responseMsg = getResponseMsg(error.response?.data);
+
+      if (responseMsg) {
+        message = responseMsg;
+      }
 
       // get backend error message and code
       if (error.code === BACKEND_ERROR_CODE) {
-        message = getResponseMsg(error.response?.data) || message;
         backendErrorCode = String(error.response?.data?.code || '');
       }
 

@@ -172,6 +172,7 @@ const routeMap: RouteMap = {
   "channels": "/channels",
   "channels_detail": "/channels/detail/:id",
   "channels_list": "/channels/list",
+  "channels_recharge": "/channels/recharge",
   "finance": "/finance",
   "finance_accounts": "/finance/accounts",
   "finance_ledger": "/finance/ledger",

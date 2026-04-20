@@ -10,6 +10,7 @@ export function setupElegantRouter() {
     access_roles: { title: '角色管理', order: 2 },
     channels: { title: '渠道管理', icon: 'mdi:lan-connect', order: 3 },
     channels_list: { title: '渠道列表', order: 1 },
+    channels_recharge: { title: '渠道充值', order: 2 },
     channels_detail: { title: '渠道详情', hideInMenu: true, activeMenu: 'channels_list' as RouteKey },
     products: { title: '商品中心', icon: 'mdi:cube-outline', order: 4 },
     products_list: { title: '平台商品', order: 1 },
@@ -28,8 +29,8 @@ export function setupElegantRouter() {
     finance_ledger: { title: '账务流水', order: 2 },
     notifications: { title: '通知管理', icon: 'mdi:bell-outline', order: 8 },
     notifications_tasks: { title: '通知任务', order: 1 },
-    notifications_detail: { title: '通知详情', hideInMenu: true, activeMenu: 'notifications_tasks' as RouteKey },
-    'notifications_dead-letters': { title: '通知死信', order: 2 }
+    'notifications_dead-letters': { title: '通知死信', order: 2 },
+    notifications_detail: { title: '通知详情', hideInMenu: true, activeMenu: 'notifications_tasks' as RouteKey }
   };
 
   return ElegantVueRouter({

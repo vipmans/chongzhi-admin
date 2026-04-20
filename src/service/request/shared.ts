@@ -10,8 +10,12 @@ export function getAuthorization() {
   return Authorization;
 }
 
-export function getResponseMsg(data?: Partial<App.Service.Response<any>> | null) {
-  return data?.msg || data?.message || '';
+export function getResponseMsg(data?: Partial<App.Service.Response<any>> | string | null) {
+  if (typeof data === 'string') {
+    return data;
+  }
+
+  return data?.msg || data?.message || (data as Record<string, any> | null)?.summary || '';
 }
 
 /** refresh token */

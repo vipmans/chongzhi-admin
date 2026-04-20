@@ -25,6 +25,18 @@ export function extractListData(value: unknown): Api.Admin.RawList {
 }
 
 export function extractPagedData(value: unknown): Api.Admin.PagedResponse<Api.Admin.RawRecord> {
+  if (Array.isArray(value)) {
+    const records = value.filter(isRecord);
+
+    return {
+      records,
+      pageNum: 1,
+      pageSize: records.length || 20,
+      total: records.length,
+      totalPages: records.length ? 1 : 0
+    };
+  }
+
   if (!isRecord(value)) {
     return {
       records: [],
@@ -33,6 +45,20 @@ export function extractPagedData(value: unknown): Api.Admin.PagedResponse<Api.Ad
       total: 0,
       totalPages: 0
     };
+  }
+
+  const nestedCandidates = ['data', 'result', 'payload', 'content'];
+
+  for (const key of nestedCandidates) {
+    const current: unknown = value[key];
+
+    if (current !== undefined && current !== null && current !== value) {
+      const nested = extractPagedData(current);
+
+      if (nested.records.length || isRecord(current)) {
+        return nested;
+      }
+    }
   }
 
   const records = Array.isArray(value.records) ? value.records.filter(isRecord) : extractListData(value);
@@ -51,21 +77,21 @@ export function extractPagedData(value: unknown): Api.Admin.PagedResponse<Api.Ad
 }
 
 export function extractObjectData(value: unknown): Api.Admin.RawRecord {
-  if (isRecord(value)) {
-    const candidates = ['data', 'detail', 'item', 'content'];
-
-    for (const key of candidates) {
-      const current = value[key];
-
-      if (isRecord(current)) {
-        return current;
-      }
-    }
-
-    return value;
+  if (!isRecord(value)) {
+    return {};
   }
 
-  return {};
+  const candidates = ['data', 'detail', 'item', 'content'];
+
+  for (const key of candidates) {
+    const current = value[key];
+
+    if (isRecord(current)) {
+      return current;
+    }
+  }
+
+  return value;
 }
 
 export function pickValue(record: Api.Admin.RawRecord, keys: string[], fallback = '-') {
@@ -117,7 +143,7 @@ export function formatAmountFen(value: unknown, fallback = '-') {
     return fallback;
   }
 
-  return `¥${(amount / 100).toFixed(2)} (${amount}分)`;
+  return `CNY ${(amount / 100).toFixed(2)} (${amount} fen)`;
 }
 
 export function formatBooleanLabel(value: unknown, positive = '是', negative = '否') {
@@ -167,4 +193,42 @@ export function getDateTimeRange(range: [number, number] | null) {
     startTime: new Date(start).toISOString(),
     endTime: new Date(end).toISOString()
   };
+}
+
+function escapeExcelCell(value: unknown) {
+  const text = value === undefined || value === null ? '' : String(value);
+
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+export function downloadExcelTable(filename: string, headers: string[], rows: Array<Array<unknown>>) {
+  const headerHtml = headers.map(header => `<th>${escapeExcelCell(header)}</th>`).join('');
+  const rowHtml = rows.map(row => `<tr>${row.map(cell => `<td>${escapeExcelCell(cell)}</td>`).join('')}</tr>`).join('');
+
+  const html = [
+    '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">',
+    '<head><meta charset="UTF-8"></head>',
+    '<body>',
+    `<table><thead><tr>${headerHtml}</tr></thead><tbody>${rowHtml}</tbody></table>`,
+    '</body>',
+    '</html>'
+  ].join('');
+
+  const blob = new Blob([`\uFEFF${html}`], {
+    type: 'application/vnd.ms-excel;charset=utf-8;'
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename.endsWith('.xls') ? filename : `${filename}.xls`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }

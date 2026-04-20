@@ -331,14 +331,14 @@ async function loadOverview() {
         fetchChannelRechargeRecords(channelId.value)
       ]);
 
-    channel.value = extractObjectData(channelRes.data);
-    balance.value = extractObjectData(balanceRes.data);
-    platformProducts.value = extractPagedData(productsRes.data).records;
-    apiKeys.value = extractListData(apiKeysRes.data);
-    callbackConfig.value = extractObjectData(callbackRes.data);
-    orderPolicy.value = extractObjectData(policyRes.data);
-    splitPolicy.value = extractObjectData(splitPolicyRes.data);
-    rechargeRows.value = extractListData(rechargeRes.data);
+    channel.value = extractObjectData(channelRes);
+    balance.value = extractObjectData(balanceRes);
+    platformProducts.value = extractPagedData(productsRes).records;
+    apiKeys.value = extractListData(apiKeysRes);
+    callbackConfig.value = extractObjectData(callbackRes);
+    orderPolicy.value = extractObjectData(policyRes);
+    splitPolicy.value = extractObjectData(splitPolicyRes);
+    rechargeRows.value = extractListData(rechargeRes);
 
     syncBasicForm(channel.value);
     syncPolicyForms();
@@ -351,7 +351,7 @@ async function loadChannelProducts() {
   productsLoading.value = true;
 
   try {
-    const { data } = await fetchChannelProducts(
+    const productData = await fetchChannelProducts(
       channelId.value,
       normalizeQuery({
         carrierCode: productQuery.carrierCode || undefined,
@@ -361,7 +361,7 @@ async function loadChannelProducts() {
       })
     );
 
-    channelProducts.value = extractListData(data);
+    channelProducts.value = extractListData(productData);
   } finally {
     productsLoading.value = false;
   }
@@ -371,8 +371,8 @@ async function loadRechargeRecords() {
   rechargeLoading.value = true;
 
   try {
-    const { data } = await fetchChannelRechargeRecords(channelId.value);
-    rechargeRows.value = extractListData(data);
+    const rechargeData = await fetchChannelRechargeRecords(channelId.value);
+    rechargeRows.value = extractListData(rechargeData);
   } finally {
     rechargeLoading.value = false;
   }
@@ -643,12 +643,12 @@ onMounted(() => {
                     </NFormItem>
                   </NGi>
                   <NGi>
-                    <NFormItem label="接入账号">
+                    <NFormItem label="门户登录账号">
                       <NInput v-model:value="basicForm.accessAccount" />
                     </NFormItem>
                   </NGi>
                   <NGi>
-                    <NFormItem label="接入密码">
+                    <NFormItem label="门户登录密码">
                       <NInput
                         v-model:value="basicForm.accessPassword"
                         type="password"

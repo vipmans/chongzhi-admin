@@ -24,6 +24,7 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   access_users: () => import("@/views/access/users/index.vue"),
   channels_detail: () => import("@/views/channels/detail/[id].vue"),
   channels_list: () => import("@/views/channels/list/index.vue"),
+  channels_recharge: () => import("@/views/channels/recharge/index.vue"),
   finance_accounts: () => import("@/views/finance/accounts/index.vue"),
   finance_ledger: () => import("@/views/finance/ledger/index.vue"),
   home: () => import("@/views/home/index.vue"),

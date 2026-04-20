@@ -97,6 +97,15 @@ export const generatedRoutes: GeneratedRoute[] = [
           title: '渠道列表',
           order: 1
         }
+      },
+      {
+        name: 'channels_recharge',
+        path: '/channels/recharge',
+        component: 'view.channels_recharge',
+        meta: {
+          title: '渠道充值',
+          order: 2
+        }
       }
     ]
   },
@@ -152,7 +161,7 @@ export const generatedRoutes: GeneratedRoute[] = [
   {
     name: 'login',
     path: '/login/:module(pwd-login)?',
-    component: 'layout.base$view.login',
+    component: 'layout.blank$view.login',
     props: true,
     meta: {
       title: '登录',

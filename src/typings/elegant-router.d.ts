@@ -26,6 +26,7 @@ declare module "@elegant-router/types" {
     "channels": "/channels";
     "channels_detail": "/channels/detail/:id";
     "channels_list": "/channels/list";
+    "channels_recharge": "/channels/recharge";
     "finance": "/finance";
     "finance_accounts": "/finance/accounts";
     "finance_ledger": "/finance/ledger";
@@ -118,6 +119,7 @@ declare module "@elegant-router/types" {
     | "access_users"
     | "channels_detail"
     | "channels_list"
+    | "channels_recharge"
     | "finance_accounts"
     | "finance_ledger"
     | "home"

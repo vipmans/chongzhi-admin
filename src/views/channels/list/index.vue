@@ -26,7 +26,12 @@ const formRef = ref<FormInst | null>(null);
 const rows = ref<Api.Admin.RawRecord[]>([]);
 const total = ref(0);
 const pageNum = ref(1);
-const pageSize = ref(20);
+const pageSize = ref(100);
+
+const defaultSort = {
+  sortBy: 'createdAt',
+  sortOrder: 'desc' as const
+};
 
 const queryModel = reactive<Api.Admin.ChannelListQuery>({
   keyword: '',
@@ -89,6 +94,11 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
     render: row => pickValue(row, ['contactName'])
   },
   {
+    key: 'accessAccount',
+    title: '门户登录账号',
+    render: row => pickValue(row, ['accessAccount'])
+  },
+  {
     key: 'protocolType',
     title: '协议',
     render: row => pickValue(row, ['protocolType'])
@@ -129,6 +139,19 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
           NButton,
           {
             size: 'small',
+            secondary: true,
+            onClick: () =>
+              router.push({
+                path: '/channels/recharge',
+                query: { channelId }
+              })
+          },
+          { default: () => '充值' }
+        ),
+        h(
+          NButton,
+          {
+            size: 'small',
             quaternary: true,
             onClick: () => {
               rawRecord.value = row;
@@ -145,7 +168,12 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
 const rules: Record<string, App.Global.FormRule[]> = {
   channelCode: [{ required: true, message: '请输入渠道编码', trigger: 'blur' }],
   channelName: [{ required: true, message: '请输入渠道名称', trigger: 'blur' }],
-  channelType: [{ required: true, message: '请输入渠道类型', trigger: 'blur' }]
+  channelType: [{ required: true, message: '请输入渠道类型', trigger: 'blur' }],
+  accessAccount: [{ required: true, message: '请输入渠道门户登录账号', trigger: 'blur' }],
+  accessPassword: [
+    { required: true, message: '请输入渠道门户登录密码', trigger: 'blur' },
+    { min: 6, message: '渠道门户登录密码至少 6 位', trigger: 'blur' }
+  ]
 };
 
 function resetForm() {
@@ -159,9 +187,9 @@ function resetForm() {
   formModel.protocolType = '';
   formModel.accessAccount = '';
   formModel.accessPassword = '';
-  formModel.cooperationStatus = '';
+  formModel.cooperationStatus = 'ACTIVE';
   formModel.supportsConsumptionLog = false;
-  formModel.settlementMode = '';
+  formModel.settlementMode = 'PREPAID';
   formModel.status = 'ACTIVE';
   formModel.remark = '';
 }
@@ -171,19 +199,69 @@ function openCreate() {
   createVisible.value = true;
 }
 
+function buildCreatedChannelRecord(result: Api.Admin.RawRecord) {
+  const channelId = getEntityId(result, ['resourceId']) || `local-${Date.now()}`;
+  const now = new Date().toISOString();
+
+  return {
+    id: channelId,
+    channelId,
+    channelCode: formModel.channelCode.trim(),
+    channelName: formModel.channelName.trim(),
+    channelType: formModel.channelType.trim(),
+    contactName: formModel.contactName?.trim() || null,
+    contactPhone: formModel.contactPhone?.trim() || null,
+    contactEmail: formModel.contactEmail?.trim() || null,
+    baseUrl: formModel.baseUrl?.trim() || null,
+    protocolType: formModel.protocolType?.trim() || null,
+    accessAccount: formModel.accessAccount?.trim() || null,
+    accessPassword: '******',
+    cooperationStatus: formModel.cooperationStatus?.trim() || 'ACTIVE',
+    supportsConsumptionLog: toBoolean(formModel.supportsConsumptionLog),
+    settlementMode: formModel.settlementMode?.trim() || null,
+    status: formModel.status?.trim() || 'ACTIVE',
+    remark: formModel.remark?.trim() || null,
+    createdAt: now,
+    updatedAt: now
+  } satisfies Api.Admin.RawRecord;
+}
+
+function prependCreatedChannel(row: Api.Admin.RawRecord) {
+  const nextChannelId = getEntityId(row, ['channelId', 'id']);
+  const nextChannelCode = pickValue(row, ['channelCode'], '').toLowerCase();
+  const hadExisting = rows.value.some(item => {
+    const currentId = getEntityId(item, ['channelId', 'id']);
+    const currentCode = pickValue(item, ['channelCode'], '').toLowerCase();
+
+    return currentId === nextChannelId || currentCode === nextChannelCode;
+  });
+  const filteredRows = rows.value.filter(item => {
+    const currentId = getEntityId(item, ['channelId', 'id']);
+    const currentCode = pickValue(item, ['channelCode'], '').toLowerCase();
+
+    return currentId !== nextChannelId && currentCode !== nextChannelCode;
+  });
+
+  rows.value = [row, ...filteredRows].slice(0, pageSize.value);
+  total.value = hadExisting ? total.value : total.value + 1;
+  pageNum.value = 1;
+}
+
 async function loadChannels() {
   loading.value = true;
 
   try {
-    const { data } = await fetchChannels(
-      normalizeQuery({
-        pageNum: pageNum.value,
-        pageSize: pageSize.value,
-        ...queryModel
-      })
+    const pageData = extractPagedData(
+      await fetchChannels(
+        normalizeQuery({
+          pageNum: pageNum.value,
+          pageSize: pageSize.value,
+          ...defaultSort,
+          ...queryModel
+        })
+      )
     );
 
-    const pageData = extractPagedData(data);
     rows.value = pageData.records;
     total.value = pageData.total;
     pageNum.value = pageData.pageNum;
@@ -219,12 +297,46 @@ async function handlePageSizeChange(size: number) {
   await loadChannels();
 }
 
+async function validateUniqueChannelIdentity() {
+  const channelCode = formModel.channelCode.trim();
+  const accessAccount = formModel.accessAccount?.trim();
+  const codeResponse = await fetchChannels({ pageNum: 1, pageSize: 100, keyword: channelCode });
+  const codeMatched = extractPagedData(codeResponse).records.some(
+    item => pickValue(item, ['channelCode'], '').toLowerCase() === channelCode.toLowerCase()
+  );
+
+  if (codeMatched) {
+    window.$message?.error('渠道编码已存在，请更换后再提交');
+    return false;
+  }
+
+  if (accessAccount) {
+    const accountResponse = await fetchChannels({ pageNum: 1, pageSize: 100, keyword: accessAccount });
+    const accountMatched = extractPagedData(accountResponse).records.some(
+      item => pickValue(item, ['accessAccount'], '').toLowerCase() === accessAccount.toLowerCase()
+    );
+
+    if (accountMatched) {
+      window.$message?.error('渠道门户登录账号已存在，请更换后再提交');
+      return false;
+    }
+  }
+
+  return true;
+}
+
 async function submitCreate() {
   await formRef.value?.validate();
+  const isUnique = await validateUniqueChannelIdentity();
+
+  if (!isUnique) {
+    return;
+  }
+
   submitting.value = true;
 
   try {
-    await createChannel(
+    const result = await createChannel(
       normalizeQuery({
         ...formModel,
         channelCode: formModel.channelCode.trim(),
@@ -244,11 +356,16 @@ async function submitCreate() {
         supportsConsumptionLog: toBoolean(formModel.supportsConsumptionLog)
       }) as Api.Admin.CreateChannelPayload
     );
+    const createdChannel = buildCreatedChannelRecord(result);
 
     window.$message?.success('渠道创建成功');
+    prependCreatedChannel(createdChannel);
     createVisible.value = false;
-    pageNum.value = 1;
-    await loadChannels();
+    queryModel.keyword = '';
+    queryModel.status = '';
+    queryModel.cooperationStatus = '';
+    queryModel.protocolType = '';
+    queryModel.channelType = '';
   } finally {
     submitting.value = false;
   }
@@ -265,7 +382,7 @@ onMounted(() => {
       <div class="flex flex-col gap-12px">
         <NGrid cols="1 s:2 m:5" responsive="screen" :x-gap="12" :y-gap="12">
           <NGi>
-            <NInput v-model:value="queryModel.keyword" clearable placeholder="搜索编码、名称、联系人" />
+            <NInput v-model:value="queryModel.keyword" clearable placeholder="搜索渠道编码、名称、联系人、门户账号" />
           </NGi>
           <NGi>
             <NSelect v-model:value="queryModel.status" :options="statusOptions" />
@@ -309,8 +426,12 @@ onMounted(() => {
       </div>
     </NCard>
 
-    <NModal v-model:show="createVisible" preset="card" title="新增渠道" class="w-760px">
-      <NForm ref="formRef" :model="formModel" :rules="rules" label-placement="left" label-width="110">
+    <NModal v-model:show="createVisible" preset="card" title="新增渠道" class="w-820px">
+      <NAlert type="info" :show-icon="false" class="mb-16px">
+        渠道创建时请同时配置“渠道门户登录账号/密码”，渠道后续将使用这组账号密码登录门户查看充值、消费和订单情况。
+      </NAlert>
+
+      <NForm ref="formRef" :model="formModel" :rules="rules" label-placement="left" label-width="120">
         <NGrid cols="1 s:2" responsive="screen" :x-gap="16">
           <NGi>
             <NFormItem label="渠道编码" path="channelCode">
@@ -349,17 +470,22 @@ onMounted(() => {
           </NGi>
           <NGi>
             <NFormItem label="协议类型">
-              <NInput v-model:value="formModel.protocolType" />
+              <NInput v-model:value="formModel.protocolType" placeholder="例如 REST" />
             </NFormItem>
           </NGi>
           <NGi>
-            <NFormItem label="接入账号">
-              <NInput v-model:value="formModel.accessAccount" />
+            <NFormItem label="门户登录账号" path="accessAccount">
+              <NInput v-model:value="formModel.accessAccount" placeholder="渠道门户登录账号" />
             </NFormItem>
           </NGi>
           <NGi>
-            <NFormItem label="接入密码">
-              <NInput v-model:value="formModel.accessPassword" type="password" show-password-on="click" />
+            <NFormItem label="门户登录密码" path="accessPassword">
+              <NInput
+                v-model:value="formModel.accessPassword"
+                type="password"
+                show-password-on="click"
+                placeholder="至少 6 位"
+              />
             </NFormItem>
           </NGi>
           <NGi>
@@ -369,7 +495,7 @@ onMounted(() => {
           </NGi>
           <NGi>
             <NFormItem label="结算模式">
-              <NInput v-model:value="formModel.settlementMode" />
+              <NInput v-model:value="formModel.settlementMode" placeholder="例如 PREPAID" />
             </NFormItem>
           </NGi>
           <NGi>
