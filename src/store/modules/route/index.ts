@@ -5,6 +5,7 @@ import { useBoolean } from '@sa/hooks';
 import type { ElegantConstRoute, RouteKey, RouteMap } from '@elegant-router/types';
 import { router } from '@/router';
 import { SetupStoreId } from '@/enum';
+import { getDefaultHomeRouteByRoleCodes } from '@/constants/auth';
 import { createStaticRoutes, getAuthVueRoutes } from '@/router/routes';
 import { getRouteName } from '@/router/elegant/transform';
 import { useAuthStore } from '../auth';
@@ -156,7 +157,9 @@ export const useRouteStore = defineStore(SetupStoreId.Route, () => {
   /** Init static auth route */
   function initStaticAuthRoute() {
     const { authRoutes: staticAuthRoutes } = createStaticRoutes();
-    const filteredAuthRoutes = filterAuthRoutesByRoles(staticAuthRoutes, []);
+    const roleCodes = authStore.userInfo.roleCodes || [];
+    const filteredAuthRoutes = filterAuthRoutesByRoles(staticAuthRoutes, roleCodes);
+    routeHome.value = getDefaultHomeRouteByRoleCodes(roleCodes);
     addAuthRoutes(filteredAuthRoutes);
 
     handleConstantAndAuthRoutes();

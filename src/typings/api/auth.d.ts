@@ -17,6 +17,8 @@ declare namespace Api {
 
     interface SessionUser {
       userName: string;
+      displayName?: string;
+      roleCodes: string[];
     }
   }
 }

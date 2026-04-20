@@ -18,6 +18,12 @@ export function fetchRefreshToken(refreshToken: string) {
   });
 }
 
+export function fetchAuthMe() {
+  return request<Api.Auth.LoginUser>({
+    url: '/admin/auth/me'
+  });
+}
+
 export function fetchLogout(refreshToken: string) {
   return request<void>({
     url: '/admin/auth/logout',

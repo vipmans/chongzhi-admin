@@ -20,6 +20,10 @@ declare namespace StorageType {
     refreshToken: string;
     /** The current login username */
     loginUsername: string;
+    /** The current login display name */
+    loginDisplayName: string;
+    /** The current login role codes */
+    loginRoleCodes: string[];
     /** The theme color */
     themeColor: string;
     /** The dark mode */

@@ -3,6 +3,7 @@ import { nextTick } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 import type { RouteKey } from '@elegant-router/types';
 import { router as globalRouter } from '@/router';
+import { useRouteStore } from '@/store/modules/route';
 
 export function useRouterPush(inSetup = true) {
   const router = inSetup ? useRouter() : globalRouter;
@@ -57,7 +58,8 @@ export function useRouterPush(inSetup = true) {
   async function redirectFromLogin(needRedirect = true) {
     const redirect = route.value.query?.redirect as string;
     const isLoginRedirect = typeof redirect === 'string' && redirect.startsWith('/login');
-    const homeRoute = import.meta.env.VITE_ROUTE_HOME as RouteKey;
+    const routeStore = useRouteStore();
+    const homeRoute = (routeStore.routeHome || import.meta.env.VITE_ROUTE_HOME) as RouteKey;
     const fallbackPath = `/${homeRoute}`;
 
     if (needRedirect && redirect && !isLoginRedirect) {

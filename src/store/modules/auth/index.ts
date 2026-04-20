@@ -1,14 +1,14 @@
 import { computed, reactive, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useLoading } from '@sa/hooks';
-import { fetchLogin } from '@/service/api';
+import { fetchAuthMe, fetchLogin } from '@/service/api';
 import { useRouterPush } from '@/hooks/common/router';
 import { SetupStoreId } from '@/enum';
 import { $t } from '@/locales';
 import { localStg } from '@/utils/storage';
 import { useRouteStore } from '../route';
 import { useTabStore } from '../tab';
-import { clearAuthStorage, getLoginUsername, getToken } from './shared';
+import { clearAuthStorage, getLoginDisplayName, getLoginRoleCodes, getLoginUsername, getToken } from './shared';
 import { requestLogout } from '@/service/request/shared';
 
 export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
@@ -19,7 +19,9 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
 
   const token = ref('');
   const userInfo: Api.Auth.SessionUser = reactive({
-    userName: ''
+    userName: '',
+    displayName: '',
+    roleCodes: []
   });
 
   /** Is login */
@@ -30,6 +32,8 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     clearAuthStorage();
     token.value = '';
     userInfo.userName = '';
+    userInfo.displayName = '';
+    userInfo.roleCodes = [];
 
     await toLogin('pwd-login', '/');
     tabStore.cacheTabs();
@@ -82,12 +86,18 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
   async function loginByToken(loginToken: Api.Auth.LoginToken, username: string) {
     const accessToken = loginToken.accessToken;
     const loginUsername = loginToken.user?.username || username;
+    const displayName = loginToken.user?.displayName || loginUsername;
+    const roleCodes = loginToken.user?.roleCodes || [];
 
     token.value = accessToken;
     userInfo.userName = loginUsername;
+    userInfo.displayName = displayName;
+    userInfo.roleCodes = roleCodes;
     localStg.set('token', accessToken);
     localStg.set('refreshToken', loginToken.refreshToken);
     localStg.set('loginUsername', loginUsername);
+    localStg.set('loginDisplayName', displayName);
+    localStg.set('loginRoleCodes', roleCodes);
     tabStore.clearTabs();
     return true;
   }
@@ -95,9 +105,33 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
   async function initUserInfo() {
     const maybeToken = getToken();
 
-    if (maybeToken) {
-      token.value = maybeToken;
-      userInfo.userName = getLoginUsername();
+    if (!maybeToken) {
+      return;
+    }
+
+    token.value = maybeToken;
+    userInfo.userName = getLoginUsername();
+    userInfo.displayName = getLoginDisplayName();
+    userInfo.roleCodes = getLoginRoleCodes();
+
+    if (userInfo.userName && userInfo.roleCodes.length) {
+      return;
+    }
+
+    const { data: loginUser, error } = await fetchAuthMe();
+
+    if (!error && loginUser) {
+      const loginUsername = loginUser.username || userInfo.userName;
+      const displayName = loginUser.displayName || userInfo.displayName || loginUsername;
+      const roleCodes = loginUser.roleCodes || userInfo.roleCodes || [];
+
+      userInfo.userName = loginUsername;
+      userInfo.displayName = displayName;
+      userInfo.roleCodes = roleCodes;
+
+      localStg.set('loginUsername', loginUsername);
+      localStg.set('loginDisplayName', displayName);
+      localStg.set('loginRoleCodes', roleCodes);
     }
   }
 

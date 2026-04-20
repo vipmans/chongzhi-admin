@@ -87,15 +87,18 @@ async function loadRoles() {
   loading.value = true;
 
   try {
-    const { data } = await fetchAdminRoles(
-      normalizeQuery({
-        pageNum: pageNum.value,
-        pageSize: pageSize.value,
-        ...queryModel
-      })
+    const pageData = extractPagedData(
+      await fetchAdminRoles(
+        normalizeQuery({
+          pageNum: pageNum.value,
+          pageSize: pageSize.value,
+          sortBy: 'createdAt',
+          sortOrder: 'desc',
+          ...queryModel
+        })
+      )
     );
 
-    const pageData = extractPagedData(data);
     rows.value = pageData.records;
     total.value = pageData.total;
     pageNum.value = pageData.pageNum;

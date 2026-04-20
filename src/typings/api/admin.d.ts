@@ -127,6 +127,15 @@ declare namespace Api {
       password: string;
       displayName: string;
       email?: string;
+      mobile?: string;
+      mobile2?: string;
+      wechat?: string;
+      qq?: string;
+      remark?: string;
+    }
+
+    interface AssignUserRolePayload {
+      roleCode: string;
     }
 
     interface CreateRolePayload {

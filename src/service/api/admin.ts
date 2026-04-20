@@ -21,6 +21,14 @@ export function fetchAdminUserDetail(userId: string) {
   });
 }
 
+export function assignAdminUserRole(userId: string, data: Api.Admin.AssignUserRolePayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/users/${userId}/roles`,
+    method: 'post',
+    data
+  });
+}
+
 export function fetchAdminRoles(params?: Api.Admin.PagedQuery) {
   return request<Api.Admin.PagedResponse<Api.Admin.RawRecord>>({
     url: '/admin/roles/',
