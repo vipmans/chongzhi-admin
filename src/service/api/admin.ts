@@ -66,14 +66,6 @@ export function fetchSuppliers(params?: Api.Admin.SupplierListQuery) {
   });
 }
 
-export function createSupplier(data: Api.Admin.SaveSupplierPayload) {
-  return request<Api.Admin.RawRecord>({
-    url: '/admin/suppliers',
-    method: 'post',
-    data
-  });
-}
-
 export function fetchSupplierDetail(supplierId: string) {
   return request<Api.Admin.RawRecord>({
     url: `/admin/suppliers/${supplierId}`
@@ -97,6 +89,41 @@ export function fetchSupplierHealth(supplierId: string) {
 export function fetchSupplierBalance(supplierId: string) {
   return request<Api.Admin.RawRecord>({
     url: `/admin/suppliers/${supplierId}/balance`
+  });
+}
+
+export function triggerSupplierCatalogSync(supplierId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/suppliers/${supplierId}/catalog/sync`,
+    method: 'post'
+  });
+}
+
+export function recoverSupplierCircuitBreaker(supplierId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/suppliers/${supplierId}/recover-circuit-breaker`,
+    method: 'post'
+  });
+}
+
+export function fetchSupplierSyncLogs(supplierId: string) {
+  return request<Api.Admin.RawList>({
+    url: `/admin/suppliers/${supplierId}/sync-logs`
+  });
+}
+
+export function fetchSupplierReconcileDiffs(params?: Api.Admin.PagedQuery & { reconcileDate?: string; orderNo?: string }) {
+  return request<Api.Admin.RawList | Api.Admin.PagedResponse<Api.Admin.RawRecord>>({
+    url: '/admin/suppliers/reconcile-diffs',
+    params
+  });
+}
+
+export function saveSupplierConfig(data: Api.Admin.SaveSupplierConfigPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: '/admin/supplier-configs',
+    method: 'post',
+    data
   });
 }
 
@@ -478,16 +505,67 @@ export function fetchNotificationTaskDeliveryLogs(taskNo: string, params?: Api.A
   });
 }
 
-export function retryNotificationTask(taskNo: string) {
+export function retryNotificationTask(taskNo: string, reason = 'MANUAL_RETRY') {
   return request<Api.Admin.RawRecord>({
     url: `/admin/notifications/tasks/${taskNo}/retry`,
-    method: 'post'
+    method: 'post',
+    data: {
+      reason
+    }
   });
 }
 
 export function fetchNotificationDeadLetters(params?: Api.Admin.PagedQuery) {
   return request<Api.Admin.PagedResponse<Api.Admin.RawRecord>>({
     url: '/admin/notifications/dead-letters',
+    params
+  });
+}
+
+export function fetchJobs(params?: Api.Admin.PagedQuery) {
+  return request<Api.Admin.PagedResponse<Api.Admin.RawRecord> | Api.Admin.RawList>({
+    url: '/admin/jobs/',
+    params
+  });
+}
+
+export function fetchJobDetail(jobId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/jobs/${jobId}`
+  });
+}
+
+export function retryJob(jobId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/jobs/${jobId}/retry`,
+    method: 'post'
+  });
+}
+
+export function cancelJob(jobId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/jobs/${jobId}/cancel`,
+    method: 'post'
+  });
+}
+
+export function fetchJobDeadLetters(params?: Api.Admin.PagedQuery) {
+  return request<Api.Admin.PagedResponse<Api.Admin.RawRecord> | Api.Admin.RawList>({
+    url: '/admin/jobs/dead-letters',
+    params
+  });
+}
+
+export function fetchAuditLogs(params?: Api.Admin.PagedQuery) {
+  return request<Api.Admin.PagedResponse<Api.Admin.RawRecord>>({
+    url: '/admin/audit-logs',
+    params
+  });
+}
+
+export function fetchLoginLogs(params?: Api.Admin.PagedQuery) {
+  return request<Api.Admin.PagedResponse<Api.Admin.RawRecord>>({
+    url: '/admin/login-logs',
     params
   });
 }

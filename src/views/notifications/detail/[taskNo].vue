@@ -22,7 +22,7 @@ const logPageNum = ref(1);
 const logPageSize = ref(10);
 const logTimeRange = ref<[number, number] | null>(null);
 
-const basicInfo = computed(() => extractObjectData(detail.value.basicInfo));
+const basicInfo = computed(() => detail.value);
 const deliverySummary = computed(() => extractObjectData(detail.value.deliverySummary));
 const payloadSnapshot = computed(() => extractObjectData(detail.value.payloadSnapshot));
 
@@ -30,7 +30,7 @@ async function loadDetail() {
   loading.value = true;
 
   try {
-    const { data } = await fetchNotificationTaskDetail(taskNo.value);
+    const data = await fetchNotificationTaskDetail(taskNo.value);
     detail.value = extractObjectData(data);
   } finally {
     loading.value = false;
@@ -41,7 +41,7 @@ async function loadLogs() {
   logsLoading.value = true;
 
   try {
-    const { data } = await fetchNotificationTaskDeliveryLogs(
+    const data = await fetchNotificationTaskDeliveryLogs(
       taskNo.value,
       normalizeQuery({
         pageNum: logPageNum.value,
@@ -65,7 +65,7 @@ async function reloadAll() {
 }
 
 async function handleRetry() {
-  await retryNotificationTask(taskNo.value);
+  await retryNotificationTask(taskNo.value, 'manual retry from notification detail');
   window.$message?.success('通知任务已重试');
   await reloadAll();
 }

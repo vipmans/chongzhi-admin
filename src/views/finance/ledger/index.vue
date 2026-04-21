@@ -60,7 +60,7 @@ async function loadRows() {
   loading.value = true;
 
   try {
-    const { data } = await fetchLedgerEntries(
+    const data = await fetchLedgerEntries(
       normalizeQuery({
         pageNum: pageNum.value,
         pageSize: pageSize.value,

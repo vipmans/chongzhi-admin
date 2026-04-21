@@ -112,7 +112,7 @@ async function loadRules() {
   loading.value = true;
 
   try {
-    const { data } = await fetchRiskRules(
+    const data = await fetchRiskRules(
       normalizeQuery({
         pageNum: pageNum.value,
         pageSize: pageSize.value,

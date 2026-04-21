@@ -14,6 +14,7 @@ export function setupElegantRouter() {
     channels_detail: { title: '渠道详情', hideInMenu: true, activeMenu: 'channels_list' as RouteKey },
     products: { title: '商品中心', icon: 'mdi:cube-outline', order: 4 },
     products_list: { title: '平台商品', order: 1 },
+    products_detail: { title: '商品详情', hideInMenu: true, activeMenu: 'products_list' as RouteKey },
     suppliers: { title: '供应商管理', icon: 'mdi:truck-delivery-outline', order: 4.5 },
     suppliers_list: { title: '供应商列表', order: 1 },
     suppliers_detail: { title: '供应商详情', hideInMenu: true, activeMenu: 'suppliers_list' as RouteKey },
@@ -30,7 +31,11 @@ export function setupElegantRouter() {
     notifications: { title: '通知管理', icon: 'mdi:bell-outline', order: 8 },
     notifications_tasks: { title: '通知任务', order: 1 },
     'notifications_dead-letters': { title: '通知死信', order: 2 },
-    notifications_detail: { title: '通知详情', hideInMenu: true, activeMenu: 'notifications_tasks' as RouteKey }
+    notifications_detail: { title: '通知详情', hideInMenu: true, activeMenu: 'notifications_tasks' as RouteKey },
+    ops: { title: '运营审计', icon: 'mdi:clipboard-text-search-outline', order: 8.5 },
+    ops_jobs: { title: '异步任务', order: 1 },
+    'ops_audit-logs': { title: '操作审计', order: 2 },
+    'ops_login-logs': { title: '登录日志', order: 3 }
   };
 
   return ElegantVueRouter({

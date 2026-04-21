@@ -302,6 +302,14 @@ declare namespace Api {
       status?: string;
     }
 
+    interface SaveSupplierConfigPayload {
+      supplierId: string;
+      configJson: JsonObject;
+      credential: string;
+      callbackSecret: string;
+      timeoutMs?: number;
+    }
+
     type CarrierCode = 'CMCC' | 'CTCC' | 'CUCC' | 'CBN';
 
     type ProductType = 'FAST' | 'MIXED';

@@ -221,6 +221,48 @@ export const generatedRoutes: GeneratedRoute[] = [
     ]
   },
   {
+    name: 'ops',
+    path: '/ops',
+    component: 'layout.base',
+    meta: {
+      title: '杩愯惀瀹¤',
+      icon: 'mdi:clipboard-text-search-outline',
+      order: 8.5
+    },
+    children: [
+      {
+        name: 'ops_audit-logs',
+        path: '/ops/audit-logs',
+        component: 'view.ops_audit-logs',
+        meta: {
+          title: '鎿嶄綔瀹¤',
+          order: 2,
+          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS']
+        }
+      },
+      {
+        name: 'ops_jobs',
+        path: '/ops/jobs',
+        component: 'view.ops_jobs',
+        meta: {
+          title: '寮傛浠诲姟',
+          order: 1,
+          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS']
+        }
+      },
+      {
+        name: 'ops_login-logs',
+        path: '/ops/login-logs',
+        component: 'view.ops_login-logs',
+        meta: {
+          title: '鐧诲綍鏃ュ織',
+          order: 3,
+          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS']
+        }
+      }
+    ]
+  },
+  {
     name: 'orders',
     path: '/orders',
     component: 'layout.base',
@@ -268,7 +310,10 @@ export const generatedRoutes: GeneratedRoute[] = [
         path: '/products/detail/:id',
         component: 'view.products_detail',
         meta: {
-          title: 'products_detail'
+          title: '鍟嗗搧璇︽儏',
+          hideInMenu: true,
+          activeMenu: 'products_list',
+          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS']
         }
       },
       {

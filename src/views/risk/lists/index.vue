@@ -100,7 +100,7 @@ async function loadRows() {
   loading.value = true;
 
   try {
-    const { data } = await fetchRiskBlackWhiteLists(
+    const data = await fetchRiskBlackWhiteLists(
       normalizeQuery({
         pageNum: pageNum.value,
         pageSize: pageSize.value,

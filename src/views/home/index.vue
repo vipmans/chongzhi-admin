@@ -46,12 +46,12 @@ async function loadDashboard() {
     ]);
 
     metrics.value = {
-      users: extractPagedData(usersRes.data).total,
-      channels: extractPagedData(channelsRes.data).total,
-      products: extractPagedData(productsRes.data).total,
-      orders: extractPagedData(ordersRes.data).total,
-      tasks: extractPagedData(tasksRes.data).total,
-      accounts: extractPagedData(accountsRes.data).total
+      users: extractPagedData(usersRes).total,
+      channels: extractPagedData(channelsRes).total,
+      products: extractPagedData(productsRes).total,
+      orders: extractPagedData(ordersRes).total,
+      tasks: extractPagedData(tasksRes).total,
+      accounts: extractPagedData(accountsRes).total
     };
   } finally {
     loading.value = false;

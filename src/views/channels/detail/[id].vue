@@ -6,32 +6,24 @@ import type { DataTableColumns, FormInst, SelectOption } from 'naive-ui';
 import {
   createChannelApiKey,
   fetchChannelApiKeys,
-  fetchChannelBalance,
   fetchChannelCallbackConfig,
   fetchChannelDetail,
   fetchChannelOrderPolicy,
-  fetchChannelProducts,
-  fetchChannelRechargeRecords,
-  fetchChannelSplitPolicy,
   fetchProducts,
   rechargeChannel,
   saveChannelCallbackConfig,
   saveChannelLimit,
   saveChannelPrice,
-  saveChannelProduct,
-  saveChannelSplitPolicy,
-  updateChannel
+  saveChannelProduct
 } from '@/service/api';
 import {
   extractListData,
   extractObjectData,
   extractPagedData,
   formatAmountFen,
-  formatBooleanLabel,
   getEntityId,
   normalizeQuery,
   pickValue,
-  toBoolean,
   toPrettyJson
 } from '@/utils/admin';
 
@@ -39,50 +31,23 @@ const route = useRoute();
 const channelId = computed(() => String(route.params.id || ''));
 
 const loading = ref(false);
-const productsLoading = ref(false);
-const rechargeLoading = ref(false);
-const savingBasic = ref(false);
-const savingSplit = ref(false);
+const saving = ref(false);
 const rawVisible = ref(false);
 const rawTitle = ref('原始数据');
 const rawRecord = ref<unknown>({});
 
 const channel = ref<Api.Admin.RawRecord>({});
-const balance = ref<Api.Admin.RawRecord>({});
-const channelProducts = ref<Api.Admin.RawRecord[]>([]);
-const rechargeRows = ref<Api.Admin.RawRecord[]>([]);
 const apiKeys = ref<Api.Admin.RawRecord[]>([]);
 const callbackConfig = ref<Api.Admin.RawRecord>({});
 const orderPolicy = ref<Api.Admin.RawRecord>({});
-const splitPolicy = ref<Api.Admin.RawRecord>({});
-const platformProducts = ref<Api.Admin.RawRecord[]>([]);
+const products = ref<Api.Admin.RawRecord[]>([]);
 
-const basicFormRef = ref<FormInst | null>(null);
 const apiKeyFormRef = ref<FormInst | null>(null);
 const callbackFormRef = ref<FormInst | null>(null);
 const productFormRef = ref<FormInst | null>(null);
 const priceFormRef = ref<FormInst | null>(null);
 const limitFormRef = ref<FormInst | null>(null);
-const splitFormRef = ref<FormInst | null>(null);
 const rechargeFormRef = ref<FormInst | null>(null);
-
-const basicForm = reactive<Api.Admin.SaveChannelPayload>({
-  channelCode: '',
-  channelName: '',
-  channelType: '',
-  contactName: '',
-  contactPhone: '',
-  contactEmail: '',
-  baseUrl: '',
-  protocolType: '',
-  accessAccount: '',
-  accessPassword: '',
-  cooperationStatus: '',
-  supportsConsumptionLog: false,
-  settlementMode: '',
-  status: '',
-  remark: ''
-});
 
 const apiKeyForm = reactive<Api.Admin.CreateChannelApiKeyPayload>({
   channelId: '',
@@ -97,7 +62,7 @@ const callbackForm = reactive<Api.Admin.SaveChannelCallbackConfigPayload>({
   timeoutSeconds: 30
 });
 
-const productAuthForm = reactive<Api.Admin.SaveChannelProductPayload>({
+const productForm = reactive<Api.Admin.SaveChannelProductPayload>({
   channelId: '',
   productId: ''
 });
@@ -116,47 +81,72 @@ const limitForm = reactive<Api.Admin.SaveChannelLimitPayload>({
   qpsLimit: 1
 });
 
-const splitForm = reactive({
-  enabled: false,
-  allowedFaceValuesText: '',
-  preferMaxSingleFaceValue: true,
-  maxSplitPieces: 5,
-  provinceOverride: '',
-  carrierOverride: ''
-});
-
 const rechargeForm = reactive<Api.Admin.RechargeChannelPayload>({
   amount: 0,
   remark: ''
 });
 
-const productQuery = reactive({
-  carrierCode: '',
-  province: '',
-  faceValue: null as number | null,
-  status: ''
-});
-
 const productOptions = computed<SelectOption[]>(() =>
-  platformProducts.value.map(item => ({
+  products.value.map(item => ({
     label: `${pickValue(item, ['productName'])} (${pickValue(item, ['productCode'])})`,
-    value: getEntityId(item, ['productId', 'id', 'productCode'])
+    value: getEntityId(item, ['productId', 'id'])
   }))
 );
 
-const authorizedProductIds = computed<string[]>(() => {
-  const list = orderPolicy.value.authorizedProductIds;
-  return Array.isArray(list) ? list.map(item => String(item)) : [];
-});
+const priceRows = computed(() => extractListData(orderPolicy.value.pricePolicies));
+const authorizedProductIds = computed<string[]>(() =>
+  Array.isArray(orderPolicy.value.authorizedProductIds) ? orderPolicy.value.authorizedProductIds.map(String) : []
+);
 
-const pricePolicies = computed<Api.Admin.RawRecord[]>(() => extractListData(orderPolicy.value.pricePolicies));
-const limitRule = computed(() => extractObjectData(orderPolicy.value.limitRule));
+const authorizedProducts = computed(() =>
+  products.value.filter(item => authorizedProductIds.value.includes(getEntityId(item, ['productId', 'id'])))
+);
 
-const basicRules: Record<string, App.Global.FormRule[]> = {
-  channelCode: [{ required: true, message: '请输入渠道编码', trigger: 'blur' }],
-  channelName: [{ required: true, message: '请输入渠道名称', trigger: 'blur' }],
-  channelType: [{ required: true, message: '请输入渠道类型', trigger: 'blur' }]
-};
+const priceColumns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
+  {
+    key: 'productId',
+    title: '商品',
+    render: row => {
+      const productId = getEntityId(row, ['productId']);
+      const product = products.value.find(item => getEntityId(item, ['productId', 'id']) === productId);
+      return product ? `${pickValue(product, ['productName'])} (${pickValue(product, ['productCode'])})` : productId;
+    }
+  },
+  {
+    key: 'saleAmountFen',
+    title: '渠道供货价',
+    render: row => formatAmountFen(row.saleAmountFen)
+  },
+  {
+    key: 'currency',
+    title: '币种',
+    render: row => pickValue(row, ['currency'])
+  },
+  {
+    key: 'status',
+    title: '状态',
+    render: row => pickValue(row, ['status'])
+  },
+  {
+    key: 'effectiveTime',
+    title: '生效时间',
+    render: row => `${pickValue(row, ['effectiveFrom'])} ~ ${pickValue(row, ['effectiveTo'])}`
+  },
+  {
+    key: 'actions',
+    title: '操作',
+    render: row =>
+      h(
+        NButton,
+        {
+          size: 'small',
+          quaternary: true,
+          onClick: () => openRaw('渠道价格策略原始数据', row)
+        },
+        { default: () => '原始数据' }
+      )
+  }
+]);
 
 const apiKeyRules: Record<string, App.Global.FormRule[]> = {
   accessKey: [{ required: true, message: '请输入 AccessKey', trigger: 'blur' }],
@@ -164,16 +154,17 @@ const apiKeyRules: Record<string, App.Global.FormRule[]> = {
 };
 
 const callbackRules: Record<string, App.Global.FormRule[]> = {
-  callbackUrl: [{ required: true, message: '请输入回调地址', trigger: 'blur' }]
+  callbackUrl: [{ required: true, message: '请输入回调地址', trigger: 'blur' }],
+  signSecret: [{ required: true, message: '请输入回调密钥', trigger: 'blur' }]
 };
 
-const strategyRules: Record<string, App.Global.FormRule[]> = {
-  productId: [{ required: true, message: '请选择平台商品', trigger: 'change' }]
+const productRules: Record<string, App.Global.FormRule[]> = {
+  productId: [{ required: true, message: '请选择商品', trigger: 'change' }]
 };
 
 const priceRules: Record<string, App.Global.FormRule[]> = {
-  productId: [{ required: true, message: '请选择平台商品', trigger: 'change' }],
-  salePrice: [{ required: true, type: 'number', message: '请输入销售价(分)', trigger: 'blur' }]
+  productId: [{ required: true, message: '请选择商品', trigger: 'change' }],
+  salePrice: [{ required: true, type: 'number', message: '请输入渠道供货价', trigger: 'blur' }]
 };
 
 const limitRules: Record<string, App.Global.FormRule[]> = {
@@ -183,74 +174,10 @@ const limitRules: Record<string, App.Global.FormRule[]> = {
   qpsLimit: [{ required: true, type: 'number', message: '请输入 QPS 限额', trigger: 'blur' }]
 };
 
-const splitRules: Record<string, App.Global.FormRule[]> = {
-  allowedFaceValuesText: [{ required: true, message: '请输入可拆面值', trigger: 'blur' }],
-  maxSplitPieces: [{ required: true, type: 'number', message: '请输入最大拆单片数', trigger: 'blur' }]
-};
-
 const rechargeRules: Record<string, App.Global.FormRule[]> = {
   amount: [{ required: true, type: 'number', message: '请输入充值金额', trigger: 'blur' }],
   remark: [{ required: true, message: '请输入充值备注', trigger: 'blur' }]
 };
-
-const channelProductColumns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
-  { key: 'productName', title: '商品名称', render: row => pickValue(row, ['productName']) },
-  { key: 'carrierCode', title: '运营商', render: row => pickValue(row, ['carrierCode']) },
-  { key: 'province', title: '省份', render: row => pickValue(row, ['province']) },
-  { key: 'faceValueFen', title: '面值', render: row => formatAmountFen(row.faceValueFen) },
-  { key: 'salePriceFen', title: '销售价', render: row => formatAmountFen(row.salePriceFen) },
-  { key: 'authorized', title: '是否授权', render: row => formatBooleanLabel(row.authorized, '已授权', '未授权') },
-  { key: 'routeSupplierName', title: '路由供应商', render: row => pickValue(row, ['routeSupplierName']) },
-  { key: 'latestSnapshotAt', title: '快照时间', render: row => pickValue(row, ['latestSnapshotAt']) },
-  { key: 'status', title: '状态', render: row => pickValue(row, ['status']) },
-  {
-    key: 'actions',
-    title: '操作',
-    render: row =>
-      h(
-        NButton,
-        {
-          size: 'small',
-          quaternary: true,
-          onClick: () => openRaw('渠道商品原始数据', row)
-        },
-        { default: () => '原始数据' }
-      )
-  }
-]);
-
-const rechargeColumns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
-  { key: 'amountFen', title: '充值金额', render: row => formatAmountFen(row.amountFen) },
-  { key: 'beforeBalanceFen', title: '充值前余额', render: row => formatAmountFen(row.beforeBalanceFen) },
-  { key: 'afterBalanceFen', title: '充值后余额', render: row => formatAmountFen(row.afterBalanceFen) },
-  { key: 'recordSource', title: '来源', render: row => pickValue(row, ['recordSource']) },
-  { key: 'operatorUsername', title: '操作人', render: row => pickValue(row, ['operatorUsername']) },
-  { key: 'remark', title: '备注', render: row => pickValue(row, ['remark']) },
-  { key: 'createdAt', title: '创建时间', render: row => pickValue(row, ['createdAt']) },
-  {
-    key: 'actions',
-    title: '操作',
-    render: row =>
-      h(
-        NButton,
-        {
-          size: 'small',
-          quaternary: true,
-          onClick: () => openRaw('渠道充值记录原始数据', row)
-        },
-        { default: () => '原始数据' }
-      )
-  }
-]);
-
-const pricePolicyColumns: DataTableColumns<Api.Admin.RawRecord> = [
-  { key: 'productId', title: '商品 ID', render: row => pickValue(row, ['productId']) },
-  {
-    key: 'salePrice',
-    title: '销售价',
-    render: row => formatAmountFen(row.salePriceFen ?? row.salePrice)
-  }
-];
 
 function openRaw(title: string, value: unknown) {
   rawTitle.value = title;
@@ -258,331 +185,157 @@ function openRaw(title: string, value: unknown) {
   rawVisible.value = true;
 }
 
-function renderDialogContent(lines: string[]) {
-  return () =>
-    h(
-      'div',
-      { class: 'flex flex-col gap-8px leading-6' },
-      lines.map((line, index) => h('div', { key: `${line}-${index}` }, line))
-    );
-}
-
-function confirmChannelSaveRisk() {
-  return new Promise<boolean>(resolve => {
-    let settled = false;
-
-    const finish = (value: boolean) => {
-      if (settled) {
-        return;
-      }
-
-      settled = true;
-      resolve(value);
-    };
-
-    const dialog = window.$dialog;
-
-    if (!dialog) {
-      finish(true);
-      return;
-    }
-
-    dialog.warning({
-      title: '确认修改渠道信息',
-      content: renderDialogContent([
-        '修改渠道编码、门户登录账号、协议、合作状态、结算模式或消费日志能力，可能影响渠道门户登录、余额展示、充值记录、商品授权、价格策略和接口调用。',
-        '如果该渠道已经配置了 API 凭证、回调地址、拆单策略或已有订单，错误修改可能导致回调失败、路由异常或后续功能缺陷。',
-        '请确认已经完成影响评估后再继续保存。'
-      ]),
-      positiveText: '继续保存',
-      negativeText: '取消',
-      onPositiveClick: () => finish(true),
-      onNegativeClick: () => finish(false),
-      onClose: () => finish(false)
-    });
-  });
-}
-
 function syncForms() {
   apiKeyForm.channelId = channelId.value;
   callbackForm.channelId = channelId.value;
-  productAuthForm.channelId = channelId.value;
+  productForm.channelId = channelId.value;
   priceForm.channelId = channelId.value;
   limitForm.channelId = channelId.value;
-}
 
-function syncBasicForm(record: Api.Admin.RawRecord) {
-  basicForm.channelCode = pickValue(record, ['channelCode'], '');
-  basicForm.channelName = pickValue(record, ['channelName'], '');
-  basicForm.channelType = pickValue(record, ['channelType'], '');
-  basicForm.contactName = pickValue(record, ['contactName'], '');
-  basicForm.contactPhone = pickValue(record, ['contactPhone'], '');
-  basicForm.contactEmail = pickValue(record, ['contactEmail'], '');
-  basicForm.baseUrl = pickValue(record, ['baseUrl'], '');
-  basicForm.protocolType = pickValue(record, ['protocolType'], '');
-  basicForm.accessAccount = pickValue(record, ['accessAccount'], '');
-  basicForm.accessPassword = '';
-  basicForm.cooperationStatus = pickValue(record, ['cooperationStatus'], '');
-  basicForm.supportsConsumptionLog = toBoolean(record.supportsConsumptionLog);
-  basicForm.settlementMode = pickValue(record, ['settlementMode'], '');
-  basicForm.status = pickValue(record, ['status'], '');
-  basicForm.remark = pickValue(record, ['remark'], '');
-}
-
-function syncPolicyForms() {
   callbackForm.callbackUrl = pickValue(callbackConfig.value, ['callbackUrl'], '');
+  callbackForm.timeoutSeconds = Number(callbackConfig.value.timeoutSeconds ?? 30) || 30;
   callbackForm.signSecret = '';
-  callbackForm.timeoutSeconds = Number(pickValue(callbackConfig.value, ['timeoutSeconds'], '30')) || 30;
 
-  const limitData = extractObjectData(orderPolicy.value.limitRule);
-  limitForm.singleLimit = Number(pickValue(limitData, ['singleLimit'], '0')) || 0;
-  limitForm.dailyLimit = Number(pickValue(limitData, ['dailyLimit'], '0')) || 0;
-  limitForm.monthlyLimit = Number(pickValue(limitData, ['monthlyLimit'], '0')) || 0;
-  limitForm.qpsLimit = Number(pickValue(limitData, ['qpsLimit'], '1')) || 1;
-
-  splitForm.enabled = toBoolean(splitPolicy.value.enabled);
-  splitForm.allowedFaceValuesText = Array.isArray(splitPolicy.value.allowedFaceValues)
-    ? splitPolicy.value.allowedFaceValues.join(', ')
-    : '';
-  splitForm.preferMaxSingleFaceValue = toBoolean(splitPolicy.value.preferMaxSingleFaceValue);
-  splitForm.maxSplitPieces = Number(pickValue(splitPolicy.value, ['maxSplitPieces'], '5')) || 5;
-  splitForm.provinceOverride = pickValue(splitPolicy.value, ['provinceOverride'], '');
-  splitForm.carrierOverride = pickValue(splitPolicy.value, ['carrierOverride'], '');
+  const limitRule = extractObjectData(orderPolicy.value.limitRule);
+  limitForm.singleLimit = Number(limitRule.singleLimitAmountFen ?? limitRule.singleLimit ?? 0) || 0;
+  limitForm.dailyLimit = Number(limitRule.dailyLimitAmountFen ?? limitRule.dailyLimit ?? 0) || 0;
+  limitForm.monthlyLimit = Number(limitRule.monthlyLimitAmountFen ?? limitRule.monthlyLimit ?? 0) || 0;
+  limitForm.qpsLimit = Number(limitRule.qpsLimit ?? 1) || 1;
 }
 
-function parseAllowedFaceValues() {
-  const items = splitForm.allowedFaceValuesText
-    .split(/[\s,，]+/)
-    .map(item => Number(item))
-    .filter(item => !Number.isNaN(item) && item > 0);
-
-  return Array.from(new Set(items));
-}
-
-async function loadOverview() {
+async function loadPage() {
   loading.value = true;
-  syncForms();
 
   try {
-    const [channelRes, balanceRes, productsRes, apiKeysRes, callbackRes, policyRes, splitPolicyRes, rechargeRes] =
-      await Promise.all([
-        fetchChannelDetail(channelId.value),
-        fetchChannelBalance(channelId.value),
-        fetchProducts({ pageNum: 1, pageSize: 200 }),
-        fetchChannelApiKeys(channelId.value),
-        fetchChannelCallbackConfig(channelId.value),
-        fetchChannelOrderPolicy(channelId.value),
-        fetchChannelSplitPolicy(channelId.value),
-        fetchChannelRechargeRecords(channelId.value)
-      ]);
+    const [channelData, apiKeyData, callbackData, policyData, productData] = await Promise.all([
+      fetchChannelDetail(channelId.value),
+      fetchChannelApiKeys(channelId.value),
+      fetchChannelCallbackConfig(channelId.value),
+      fetchChannelOrderPolicy(channelId.value),
+      fetchProducts({ pageNum: 1, pageSize: 200 })
+    ]);
 
-    channel.value = extractObjectData(channelRes);
-    balance.value = extractObjectData(balanceRes);
-    platformProducts.value = extractPagedData(productsRes).records;
-    apiKeys.value = extractListData(apiKeysRes);
-    callbackConfig.value = extractObjectData(callbackRes);
-    orderPolicy.value = extractObjectData(policyRes);
-    splitPolicy.value = extractObjectData(splitPolicyRes);
-    rechargeRows.value = extractListData(rechargeRes);
+    channel.value = extractObjectData(channelData);
+    apiKeys.value = extractListData(apiKeyData);
+    callbackConfig.value = extractObjectData(callbackData);
+    orderPolicy.value = extractObjectData(policyData);
+    products.value = extractPagedData(productData).records;
 
-    syncBasicForm(channel.value);
-    syncPolicyForms();
+    syncForms();
   } finally {
     loading.value = false;
   }
 }
 
-async function loadChannelProducts() {
-  productsLoading.value = true;
-
-  try {
-    const productData = await fetchChannelProducts(
-      channelId.value,
-      normalizeQuery({
-        carrierCode: productQuery.carrierCode || undefined,
-        province: productQuery.province || undefined,
-        faceValue: productQuery.faceValue || undefined,
-        status: productQuery.status || undefined
-      })
-    );
-
-    channelProducts.value = extractListData(productData);
-  } finally {
-    productsLoading.value = false;
-  }
-}
-
-async function loadRechargeRecords() {
-  rechargeLoading.value = true;
-
-  try {
-    const rechargeData = await fetchChannelRechargeRecords(channelId.value);
-    rechargeRows.value = extractListData(rechargeData);
-  } finally {
-    rechargeLoading.value = false;
-  }
-}
-
-async function reloadAll() {
-  await Promise.all([loadOverview(), loadChannelProducts()]);
-}
-
-async function handleSaveBasic() {
-  await basicFormRef.value?.validate();
-  const confirmed = await confirmChannelSaveRisk();
-
-  if (!confirmed) {
-    return;
-  }
-
-  savingBasic.value = true;
-
-  try {
-    await updateChannel(
-      channelId.value,
-      normalizeQuery({
-        ...basicForm,
-        channelCode: basicForm.channelCode.trim(),
-        channelName: basicForm.channelName.trim(),
-        channelType: basicForm.channelType.trim(),
-        contactName: basicForm.contactName?.trim(),
-        contactPhone: basicForm.contactPhone?.trim(),
-        contactEmail: basicForm.contactEmail?.trim(),
-        baseUrl: basicForm.baseUrl?.trim(),
-        protocolType: basicForm.protocolType?.trim(),
-        accessAccount: basicForm.accessAccount?.trim(),
-        accessPassword: basicForm.accessPassword?.trim(),
-        cooperationStatus: basicForm.cooperationStatus?.trim(),
-        settlementMode: basicForm.settlementMode?.trim(),
-        status: basicForm.status?.trim(),
-        remark: basicForm.remark?.trim(),
-        supportsConsumptionLog: toBoolean(basicForm.supportsConsumptionLog)
-      }) as Api.Admin.SaveChannelPayload
-    );
-
-    window.$message?.success('渠道信息已保存');
-    await loadOverview();
-  } finally {
-    savingBasic.value = false;
-  }
-}
-
-async function submitApiKey() {
+async function handleCreateApiKey() {
   await apiKeyFormRef.value?.validate();
-  await createChannelApiKey({ ...apiKeyForm });
-  window.$message?.success('渠道凭证已保存');
-  apiKeyForm.accessKey = '';
-  apiKeyForm.secretKey = '';
-  await loadOverview();
-}
-
-async function submitCallback() {
-  await callbackFormRef.value?.validate();
-  await saveChannelCallbackConfig(
-    normalizeQuery({
-      ...callbackForm,
-      callbackUrl: callbackForm.callbackUrl.trim(),
-      signSecret: callbackForm.signSecret?.trim(),
-      timeoutSeconds: Number(callbackForm.timeoutSeconds) || 30
-    }) as Api.Admin.SaveChannelCallbackConfigPayload
-  );
-  window.$message?.success('回调配置已保存');
-  callbackForm.signSecret = '';
-  await loadOverview();
-}
-
-async function submitProductAuth() {
-  await productFormRef.value?.validate();
-  await saveChannelProduct({ ...productAuthForm });
-  window.$message?.success('商品授权已保存');
-  await Promise.all([loadOverview(), loadChannelProducts()]);
-}
-
-async function submitPrice() {
-  await priceFormRef.value?.validate();
-  await saveChannelPrice({ ...priceForm, salePrice: Number(priceForm.salePrice) });
-  window.$message?.success('销售价策略已保存');
-  await loadOverview();
-}
-
-async function submitLimit() {
-  await limitFormRef.value?.validate();
-  await saveChannelLimit({
-    ...limitForm,
-    singleLimit: Number(limitForm.singleLimit),
-    dailyLimit: Number(limitForm.dailyLimit),
-    monthlyLimit: Number(limitForm.monthlyLimit),
-    qpsLimit: Number(limitForm.qpsLimit)
-  });
-  window.$message?.success('限额策略已保存');
-  await loadOverview();
-}
-
-async function submitSplitPolicy() {
-  await splitFormRef.value?.validate();
-
-  const allowedFaceValues = parseAllowedFaceValues();
-
-  if (!allowedFaceValues.length) {
-    window.$message?.error('请至少填写一个可拆面值');
-    return;
-  }
-
-  savingSplit.value = true;
+  saving.value = true;
 
   try {
-    await saveChannelSplitPolicy(channelId.value, {
-      enabled: toBoolean(splitForm.enabled),
-      allowedFaceValues,
-      preferMaxSingleFaceValue: toBoolean(splitForm.preferMaxSingleFaceValue),
-      maxSplitPieces: Number(splitForm.maxSplitPieces),
-      provinceOverride: splitForm.provinceOverride.trim() || undefined,
-      carrierOverride: splitForm.carrierOverride.trim() || undefined
+    await createChannelApiKey({
+      channelId: channelId.value,
+      accessKey: apiKeyForm.accessKey.trim(),
+      secretKey: apiKeyForm.secretKey.trim()
     });
-
-    window.$message?.success('拆单策略已保存');
-    await loadOverview();
+    window.$message?.success('渠道凭证已保存');
+    apiKeyForm.accessKey = '';
+    apiKeyForm.secretKey = '';
+    await loadPage();
   } finally {
-    savingSplit.value = false;
+    saving.value = false;
   }
 }
 
-async function submitRecharge() {
+async function handleSaveCallback() {
+  await callbackFormRef.value?.validate();
+  saving.value = true;
+
+  try {
+    await saveChannelCallbackConfig({
+      channelId: channelId.value,
+      callbackUrl: callbackForm.callbackUrl.trim(),
+      signSecret: callbackForm.signSecret.trim(),
+      timeoutSeconds: Number(callbackForm.timeoutSeconds) || 30
+    });
+    window.$message?.success('回调配置已保存');
+    callbackForm.signSecret = '';
+    await loadPage();
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function handleAuthorizeProduct() {
+  await productFormRef.value?.validate();
+  saving.value = true;
+
+  try {
+    await saveChannelProduct({
+      channelId: channelId.value,
+      productId: productForm.productId
+    });
+    window.$message?.success('商品授权已保存');
+    await loadPage();
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function handleSavePrice() {
+  await priceFormRef.value?.validate();
+  saving.value = true;
+
+  try {
+    await saveChannelPrice({
+      channelId: channelId.value,
+      productId: priceForm.productId,
+      salePrice: Number(priceForm.salePrice)
+    });
+    window.$message?.success('渠道供货价已保存');
+    await loadPage();
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function handleSaveLimit() {
+  await limitFormRef.value?.validate();
+  saving.value = true;
+
+  try {
+    await saveChannelLimit({
+      channelId: channelId.value,
+      singleLimit: Number(limitForm.singleLimit),
+      dailyLimit: Number(limitForm.dailyLimit),
+      monthlyLimit: Number(limitForm.monthlyLimit),
+      qpsLimit: Number(limitForm.qpsLimit)
+    });
+    window.$message?.success('限额规则已保存');
+    await loadPage();
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function handleRecharge() {
   await rechargeFormRef.value?.validate();
-  await rechargeChannel(channelId.value, {
-    amount: Number(rechargeForm.amount),
-    remark: rechargeForm.remark?.trim()
-  });
-  window.$message?.success('渠道充值已提交');
-  rechargeForm.amount = 0;
-  rechargeForm.remark = '';
-  await Promise.all([loadOverview(), loadRechargeRecords()]);
-}
+  saving.value = true;
 
-async function handleResetProductFilters() {
-  productQuery.carrierCode = '';
-  productQuery.province = '';
-  productQuery.faceValue = null;
-  productQuery.status = '';
-  await loadChannelProducts();
-}
-
-const balanceTagType = computed(() => {
-  const status = pickValue(balance.value, ['status'], '').toUpperCase();
-
-  if (status.includes('FROZEN')) {
-    return 'warning';
+  try {
+    await rechargeChannel(channelId.value, {
+      amount: Number(rechargeForm.amount),
+      remark: rechargeForm.remark.trim()
+    });
+    window.$message?.success('渠道充值已提交');
+    rechargeForm.amount = 0;
+    rechargeForm.remark = '';
+  } finally {
+    saving.value = false;
   }
-
-  if (status.includes('DISABLED') || status.includes('INACTIVE')) {
-    return 'error';
-  }
-
-  return 'success';
-});
+}
 
 onMounted(() => {
-  reloadAll();
+  loadPage();
 });
 </script>
 
@@ -592,310 +345,59 @@ onMounted(() => {
       <div class="flex flex-col gap-8px lg:flex-row lg:items-center lg:justify-between">
         <div class="flex flex-col gap-6px">
           <h2 class="m-0 text-24px text-#0f172a font-700">
-            {{ pickValue(channel, ['channelName', 'name'], '渠道详情') }}
+            {{ pickValue(channel, ['channelName'], '渠道详情') }}
           </h2>
           <span class="text-14px text-#64748b">
-            渠道编码：{{ pickValue(channel, ['channelCode', 'code']) }} | 渠道类型：{{
-              pickValue(channel, ['channelType'])
-            }}
-            | 合作状态：{{ pickValue(channel, ['cooperationStatus']) }}
+            渠道编码：{{ pickValue(channel, ['channelCode'], channelId) }} | 渠道类型：{{ pickValue(channel, ['channelType']) }} |
+            状态：{{ pickValue(channel, ['status']) }}
           </span>
         </div>
-        <NButton @click="reloadAll">刷新详情</NButton>
+        <NButton @click="loadPage">刷新</NButton>
       </div>
     </NCard>
 
+    <NAlert type="info" :show-icon="false">
+      新版 API 不支持前端直接修改渠道主体基础信息，因此详情页以读取主体档案为主，重点提供凭证、回调、商品授权、渠道供货价、限额和充值配置能力。
+    </NAlert>
+
     <NGrid cols="1 l:3" responsive="screen" :x-gap="16" :y-gap="16">
       <NGi>
-        <NCard title="主体概览" :bordered="false" class="card-wrapper">
-          <NDescriptions label-placement="left" bordered :column="1">
-            <NDescriptionsItem label="联系人">{{ pickValue(channel, ['contactName']) }}</NDescriptionsItem>
-            <NDescriptionsItem label="联系电话">{{ pickValue(channel, ['contactPhone']) }}</NDescriptionsItem>
-            <NDescriptionsItem label="联系邮箱">{{ pickValue(channel, ['contactEmail']) }}</NDescriptionsItem>
-            <NDescriptionsItem label="接口地址">{{ pickValue(channel, ['baseUrl']) }}</NDescriptionsItem>
-            <NDescriptionsItem label="协议">{{ pickValue(channel, ['protocolType']) }}</NDescriptionsItem>
-            <NDescriptionsItem label="消费日志">
-              {{ formatBooleanLabel(channel.supportsConsumptionLog, '支持', '不支持') }}
-            </NDescriptionsItem>
+        <NCard title="主体信息" :bordered="false" class="card-wrapper">
+          <NDescriptions bordered :column="1" label-placement="left">
+            <NDescriptionsItem label="渠道 ID">{{ getEntityId(channel, ['channelId', 'id']) || channelId }}</NDescriptionsItem>
+            <NDescriptionsItem label="渠道编码">{{ pickValue(channel, ['channelCode']) }}</NDescriptionsItem>
+            <NDescriptionsItem label="渠道名称">{{ pickValue(channel, ['channelName']) }}</NDescriptionsItem>
+            <NDescriptionsItem label="渠道类型">{{ pickValue(channel, ['channelType']) }}</NDescriptionsItem>
+            <NDescriptionsItem label="结算模式">{{ pickValue(channel, ['settlementMode']) }}</NDescriptionsItem>
+            <NDescriptionsItem label="更新时间">{{ pickValue(channel, ['updatedAt', 'createdAt']) }}</NDescriptionsItem>
           </NDescriptions>
         </NCard>
       </NGi>
       <NGi>
-        <NCard title="余额概览" :bordered="false" class="card-wrapper">
-          <NSpace vertical :size="12">
-            <div class="text-28px text-#0f172a font-700">{{ formatAmountFen(balance.availableBalanceFen) }}</div>
-            <NTag :type="balanceTagType" round>{{ pickValue(balance, ['status'], 'UNKNOWN') }}</NTag>
-            <div class="text-14px text-#64748b">冻结余额：{{ formatAmountFen(balance.frozenBalanceFen) }}</div>
-            <div class="text-14px text-#64748b">币种：{{ pickValue(balance, ['currency']) }}</div>
-            <div class="text-14px text-#64748b">更新时间：{{ pickValue(balance, ['updatedAt']) }}</div>
+        <NCard title="策略摘要" :bordered="false" class="card-wrapper">
+          <NSpace vertical :size="10">
+            <div class="text-14px">已授权商品数：{{ authorizedProductIds.length }}</div>
+            <div class="text-14px">价格策略数：{{ priceRows.length }}</div>
+            <div class="text-14px">
+              回调地址：
+              <span class="break-all">{{ pickValue(callbackConfig, ['callbackUrl']) }}</span>
+            </div>
+            <div class="text-14px">回调超时：{{ pickValue(callbackConfig, ['timeoutSeconds']) }} 秒</div>
+            <NTag type="info" round>渠道供货价由 `channel-prices` 接口单独配置</NTag>
           </NSpace>
         </NCard>
       </NGi>
       <NGi>
-        <NCard title="当前策略概览" :bordered="false" class="card-wrapper">
-          <NDescriptions label-placement="left" bordered :column="1">
-            <NDescriptionsItem label="结算模式">{{ pickValue(channel, ['settlementMode']) }}</NDescriptionsItem>
-            <NDescriptionsItem label="已授权商品数">{{ authorizedProductIds.length }}</NDescriptionsItem>
-            <NDescriptionsItem label="回调地址">{{ pickValue(callbackConfig, ['callbackUrl']) }}</NDescriptionsItem>
-            <NDescriptionsItem label="回调超时">{{ pickValue(callbackConfig, ['timeoutSeconds']) }}</NDescriptionsItem>
-            <NDescriptionsItem label="拆单启用">
-              {{ formatBooleanLabel(splitPolicy.enabled, '是', '否') }}
-            </NDescriptionsItem>
-          </NDescriptions>
-        </NCard>
+        <RawJsonCard title="渠道详情原始 JSON" :value="channel" />
       </NGi>
     </NGrid>
 
     <NTabs type="line" animated>
-      <NTabPane name="basic" tab="基本信息">
-        <NGrid cols="1 l:2" responsive="screen" :x-gap="16" :y-gap="16">
-          <NGi>
-            <NCard title="编辑渠道信息" :bordered="false" class="card-wrapper">
-              <NForm ref="basicFormRef" :model="basicForm" :rules="basicRules" label-placement="left" label-width="110">
-                <NGrid cols="1 s:2" responsive="screen" :x-gap="16">
-                  <NGi>
-                    <NFormItem label="渠道编码" path="channelCode">
-                      <NInput v-model:value="basicForm.channelCode" />
-                    </NFormItem>
-                  </NGi>
-                  <NGi>
-                    <NFormItem label="渠道名称" path="channelName">
-                      <NInput v-model:value="basicForm.channelName" />
-                    </NFormItem>
-                  </NGi>
-                  <NGi>
-                    <NFormItem label="渠道类型" path="channelType">
-                      <NInput v-model:value="basicForm.channelType" />
-                    </NFormItem>
-                  </NGi>
-                  <NGi>
-                    <NFormItem label="联系人">
-                      <NInput v-model:value="basicForm.contactName" />
-                    </NFormItem>
-                  </NGi>
-                  <NGi>
-                    <NFormItem label="联系电话">
-                      <NInput v-model:value="basicForm.contactPhone" />
-                    </NFormItem>
-                  </NGi>
-                  <NGi>
-                    <NFormItem label="联系邮箱">
-                      <NInput v-model:value="basicForm.contactEmail" />
-                    </NFormItem>
-                  </NGi>
-                  <NGi>
-                    <NFormItem label="接口地址">
-                      <NInput v-model:value="basicForm.baseUrl" />
-                    </NFormItem>
-                  </NGi>
-                  <NGi>
-                    <NFormItem label="协议类型">
-                      <NInput v-model:value="basicForm.protocolType" />
-                    </NFormItem>
-                  </NGi>
-                  <NGi>
-                    <NFormItem label="门户登录账号">
-                      <NInput v-model:value="basicForm.accessAccount" />
-                    </NFormItem>
-                  </NGi>
-                  <NGi>
-                    <NFormItem label="门户登录密码">
-                      <NInput
-                        v-model:value="basicForm.accessPassword"
-                        type="password"
-                        show-password-on="click"
-                        placeholder="留空则不更新"
-                      />
-                    </NFormItem>
-                  </NGi>
-                  <NGi>
-                    <NFormItem label="合作状态">
-                      <NInput v-model:value="basicForm.cooperationStatus" />
-                    </NFormItem>
-                  </NGi>
-                  <NGi>
-                    <NFormItem label="结算模式">
-                      <NInput v-model:value="basicForm.settlementMode" />
-                    </NFormItem>
-                  </NGi>
-                  <NGi>
-                    <NFormItem label="消费日志能力">
-                      <NSwitch v-model:value="basicForm.supportsConsumptionLog" />
-                    </NFormItem>
-                  </NGi>
-                  <NGi>
-                    <NFormItem label="状态">
-                      <NInput v-model:value="basicForm.status" />
-                    </NFormItem>
-                  </NGi>
-                </NGrid>
-                <NFormItem label="备注">
-                  <NInput v-model:value="basicForm.remark" type="textarea" :autosize="{ minRows: 4, maxRows: 6 }" />
-                </NFormItem>
-                <NButton type="primary" :loading="savingBasic" @click="handleSaveBasic">保存信息</NButton>
-              </NForm>
-            </NCard>
-          </NGi>
-          <NGi>
-            <NSpace vertical :size="16">
-              <RawJsonCard title="渠道详情原始 JSON" :value="channel" />
-              <RawJsonCard title="渠道余额原始 JSON" :value="balance" />
-            </NSpace>
-          </NGi>
-        </NGrid>
-      </NTabPane>
-
-      <NTabPane name="products" tab="商品与策略">
-        <NCard :bordered="false" class="card-wrapper">
-          <div class="mb-16px flex flex-col gap-12px">
-            <NGrid cols="1 s:2 m:4" responsive="screen" :x-gap="12" :y-gap="12">
-              <NGi>
-                <NInput v-model:value="productQuery.carrierCode" clearable placeholder="运营商" />
-              </NGi>
-              <NGi>
-                <NInput v-model:value="productQuery.province" clearable placeholder="省份" />
-              </NGi>
-              <NGi>
-                <NInputNumber v-model:value="productQuery.faceValue" :min="1" class="w-full" placeholder="面值(分)" />
-              </NGi>
-              <NGi>
-                <NInput v-model:value="productQuery.status" clearable placeholder="状态" />
-              </NGi>
-            </NGrid>
-            <div class="flex flex-wrap justify-end gap-12px">
-              <NButton @click="handleResetProductFilters">重置</NButton>
-              <NButton @click="loadChannelProducts">查询</NButton>
-            </div>
-          </div>
-
-          <NDataTable
-            :columns="channelProductColumns"
-            :data="channelProducts"
-            :loading="productsLoading"
-            :pagination="{ pageSize: 10 }"
-            :row-key="row => getEntityId(row, ['productId', 'channelId', 'id'])"
-          />
-        </NCard>
-
-        <div class="h-16px" />
-
-        <NGrid cols="1 l:2" responsive="screen" :x-gap="16" :y-gap="16">
-          <NGi>
-            <NSpace vertical :size="16">
-              <NCard title="商品授权" :bordered="false" class="card-wrapper">
-                <NForm
-                  ref="productFormRef"
-                  :model="productAuthForm"
-                  :rules="strategyRules"
-                  label-placement="left"
-                  label-width="96"
-                >
-                  <NFormItem label="平台商品" path="productId">
-                    <NSelect v-model:value="productAuthForm.productId" :options="productOptions" />
-                  </NFormItem>
-                  <NButton type="primary" @click="submitProductAuth">保存授权</NButton>
-                </NForm>
-                <div class="mt-12px text-13px text-#64748b">
-                  已授权商品：{{ authorizedProductIds.length ? authorizedProductIds.join(', ') : '暂无' }}
-                </div>
-              </NCard>
-
-              <NCard title="销售价策略" :bordered="false" class="card-wrapper">
-                <NForm
-                  ref="priceFormRef"
-                  :model="priceForm"
-                  :rules="priceRules"
-                  label-placement="left"
-                  label-width="96"
-                >
-                  <NFormItem label="平台商品" path="productId">
-                    <NSelect v-model:value="priceForm.productId" :options="productOptions" />
-                  </NFormItem>
-                  <NFormItem label="销售价(分)" path="salePrice">
-                    <NInputNumber v-model:value="priceForm.salePrice" :min="0" class="w-full" />
-                  </NFormItem>
-                  <NButton type="primary" @click="submitPrice">保存价格</NButton>
-                </NForm>
-                <NDataTable
-                  class="mt-12px"
-                  :columns="pricePolicyColumns"
-                  :data="pricePolicies"
-                  :pagination="false"
-                  :row-key="row => getEntityId(row, ['productId', 'id'])"
-                />
-              </NCard>
-
-              <NCard title="限额策略" :bordered="false" class="card-wrapper">
-                <NForm
-                  ref="limitFormRef"
-                  :model="limitForm"
-                  :rules="limitRules"
-                  label-placement="left"
-                  label-width="96"
-                >
-                  <NFormItem label="单笔限额" path="singleLimit">
-                    <NInputNumber v-model:value="limitForm.singleLimit" :min="0" class="w-full" />
-                  </NFormItem>
-                  <NFormItem label="日限额" path="dailyLimit">
-                    <NInputNumber v-model:value="limitForm.dailyLimit" :min="0" class="w-full" />
-                  </NFormItem>
-                  <NFormItem label="月限额" path="monthlyLimit">
-                    <NInputNumber v-model:value="limitForm.monthlyLimit" :min="0" class="w-full" />
-                  </NFormItem>
-                  <NFormItem label="QPS 限额" path="qpsLimit">
-                    <NInputNumber v-model:value="limitForm.qpsLimit" :min="1" class="w-full" />
-                  </NFormItem>
-                  <NButton type="primary" @click="submitLimit">保存限额</NButton>
-                </NForm>
-              </NCard>
-
-              <NCard title="拆单策略" :bordered="false" class="card-wrapper">
-                <NForm
-                  ref="splitFormRef"
-                  :model="splitForm"
-                  :rules="splitRules"
-                  label-placement="left"
-                  label-width="120"
-                >
-                  <NFormItem label="启用拆单">
-                    <NSwitch v-model:value="splitForm.enabled" />
-                  </NFormItem>
-                  <NFormItem label="可拆面值" path="allowedFaceValuesText">
-                    <NInput v-model:value="splitForm.allowedFaceValuesText" placeholder="例如 200,100,50,20,10" />
-                  </NFormItem>
-                  <NFormItem label="优先大面值">
-                    <NSwitch v-model:value="splitForm.preferMaxSingleFaceValue" />
-                  </NFormItem>
-                  <NFormItem label="最大拆单片数" path="maxSplitPieces">
-                    <NInputNumber v-model:value="splitForm.maxSplitPieces" :min="1" :max="20" class="w-full" />
-                  </NFormItem>
-                  <NFormItem label="省份覆盖">
-                    <NInput v-model:value="splitForm.provinceOverride" placeholder="可选" />
-                  </NFormItem>
-                  <NFormItem label="运营商覆盖">
-                    <NInput v-model:value="splitForm.carrierOverride" placeholder="可选" />
-                  </NFormItem>
-                  <NButton type="primary" :loading="savingSplit" @click="submitSplitPolicy">保存拆单策略</NButton>
-                </NForm>
-              </NCard>
-            </NSpace>
-          </NGi>
-
-          <NGi>
-            <NSpace vertical :size="16">
-              <RawJsonCard title="下单策略原始 JSON" :value="orderPolicy" />
-              <RawJsonCard title="限额规则原始 JSON" :value="limitRule" />
-              <RawJsonCard title="拆单策略原始 JSON" :value="splitPolicy" />
-            </NSpace>
-          </NGi>
-        </NGrid>
-      </NTabPane>
-
-      <NTabPane name="credentials" tab="凭证与回调">
+      <NTabPane name="credential" tab="凭证与回调">
         <NGrid cols="1 l:2" responsive="screen" :x-gap="16" :y-gap="16">
           <NGi>
             <NCard title="接口凭证" :bordered="false" class="card-wrapper">
-              <NList>
+              <NList bordered>
                 <NListItem v-for="item in apiKeys" :key="getEntityId(item, ['id', 'accessKey'])">
                   <div class="flex flex-col gap-4px">
                     <span>AccessKey：{{ pickValue(item, ['accessKey']) }}</span>
@@ -921,7 +423,7 @@ onMounted(() => {
                   <NFormItem label="SecretKey" path="secretKey">
                     <NInput v-model:value="apiKeyForm.secretKey" />
                   </NFormItem>
-                  <NButton type="primary" @click="submitApiKey">新增凭证</NButton>
+                  <NButton type="primary" :loading="saving" @click="handleCreateApiKey">保存凭证</NButton>
                 </NForm>
               </div>
             </NCard>
@@ -939,63 +441,146 @@ onMounted(() => {
                 <NFormItem label="回调地址" path="callbackUrl">
                   <NInput v-model:value="callbackForm.callbackUrl" />
                 </NFormItem>
-                <NFormItem label="签名密钥">
-                  <NInput v-model:value="callbackForm.signSecret" placeholder="留空则不更新" />
+                <NFormItem label="回调密钥" path="signSecret">
+                  <NInput v-model:value="callbackForm.signSecret" />
                 </NFormItem>
                 <NFormItem label="超时秒数">
                   <NInputNumber v-model:value="callbackForm.timeoutSeconds" :min="1" class="w-full" />
                 </NFormItem>
-                <NButton type="primary" @click="submitCallback">保存回调配置</NButton>
+                <NButton type="primary" :loading="saving" @click="handleSaveCallback">保存回调配置</NButton>
               </NForm>
 
               <div class="mt-16px">
-                <RawJsonCard title="当前回调原始 JSON" :value="callbackConfig" />
+                <RawJsonCard title="回调配置原始 JSON" :value="callbackConfig" />
               </div>
             </NCard>
           </NGi>
         </NGrid>
       </NTabPane>
 
-      <NTabPane name="recharge" tab="充值记录">
+      <NTabPane name="product" tab="商品与供货价">
         <NGrid cols="1 l:2" responsive="screen" :x-gap="16" :y-gap="16">
           <NGi>
-            <NCard title="渠道账户充值" :bordered="false" class="card-wrapper">
-              <NForm
-                ref="rechargeFormRef"
-                :model="rechargeForm"
-                :rules="rechargeRules"
-                label-placement="left"
-                label-width="96"
-              >
-                <NFormItem label="充值金额" path="amount">
-                  <NInputNumber v-model:value="rechargeForm.amount" :min="0.01" class="w-full" />
-                </NFormItem>
-                <NFormItem label="备注" path="remark">
-                  <NInput v-model:value="rechargeForm.remark" type="textarea" />
-                </NFormItem>
-                <NButton type="primary" @click="submitRecharge">提交充值</NButton>
-              </NForm>
+            <NSpace vertical :size="16">
+              <NCard title="商品授权" :bordered="false" class="card-wrapper">
+                <NForm
+                  ref="productFormRef"
+                  :model="productForm"
+                  :rules="productRules"
+                  label-placement="left"
+                  label-width="96"
+                >
+                  <NFormItem label="平台商品" path="productId">
+                    <NSelect v-model:value="productForm.productId" :options="productOptions" filterable />
+                  </NFormItem>
+                  <NButton type="primary" :loading="saving" @click="handleAuthorizeProduct">保存授权</NButton>
+                </NForm>
+                <div class="mt-12px flex flex-wrap gap-8px">
+                  <NTag v-for="item in authorizedProducts" :key="getEntityId(item, ['productId', 'id'])" type="success">
+                    {{ pickValue(item, ['productName']) }}
+                  </NTag>
+                  <span v-if="!authorizedProducts.length" class="text-13px text-#64748b">暂无已授权商品</span>
+                </div>
+              </NCard>
+
+              <NCard title="渠道供货价" :bordered="false" class="card-wrapper">
+                <NForm
+                  ref="priceFormRef"
+                  :model="priceForm"
+                  :rules="priceRules"
+                  label-placement="left"
+                  label-width="110"
+                >
+                  <NFormItem label="平台商品" path="productId">
+                    <NSelect v-model:value="priceForm.productId" :options="productOptions" filterable />
+                  </NFormItem>
+                  <NFormItem label="供货价(分)" path="salePrice">
+                    <NInputNumber v-model:value="priceForm.salePrice" :min="0" class="w-full" />
+                  </NFormItem>
+                  <NAlert type="info" :show-icon="false" class="mb-12px">
+                    这里配置的是渠道侧供货价，例如 100 元话费可给不同渠道分别配置 10100、10050 等价格。
+                  </NAlert>
+                  <NButton type="primary" :loading="saving" @click="handleSavePrice">保存供货价</NButton>
+                </NForm>
+              </NCard>
+            </NSpace>
+          </NGi>
+
+          <NGi>
+            <NCard title="当前价格策略" :bordered="false" class="card-wrapper">
+              <NDataTable
+                :columns="priceColumns"
+                :data="priceRows"
+                :pagination="{ pageSize: 10 }"
+                :row-key="row => getEntityId(row, ['id', 'productId'])"
+              />
             </NCard>
           </NGi>
+        </NGrid>
+      </NTabPane>
+
+      <NTabPane name="limit" tab="限额与充值">
+        <NGrid cols="1 l:2" responsive="screen" :x-gap="16" :y-gap="16">
           <NGi>
-            <RawJsonCard title="余额原始 JSON" :value="balance" />
+            <NSpace vertical :size="16">
+              <NCard title="限额规则" :bordered="false" class="card-wrapper">
+                <NForm
+                  ref="limitFormRef"
+                  :model="limitForm"
+                  :rules="limitRules"
+                  label-placement="left"
+                  label-width="110"
+                >
+                  <NFormItem label="单笔限额(分)" path="singleLimit">
+                    <NInputNumber v-model:value="limitForm.singleLimit" :min="0" class="w-full" />
+                  </NFormItem>
+                  <NFormItem label="日限额(分)" path="dailyLimit">
+                    <NInputNumber v-model:value="limitForm.dailyLimit" :min="0" class="w-full" />
+                  </NFormItem>
+                  <NFormItem label="月限额(分)" path="monthlyLimit">
+                    <NInputNumber v-model:value="limitForm.monthlyLimit" :min="0" class="w-full" />
+                  </NFormItem>
+                  <NFormItem label="QPS 限额" path="qpsLimit">
+                    <NInputNumber v-model:value="limitForm.qpsLimit" :min="1" class="w-full" />
+                  </NFormItem>
+                  <NButton type="primary" :loading="saving" @click="handleSaveLimit">保存限额</NButton>
+                </NForm>
+              </NCard>
+
+              <NCard title="渠道充值" :bordered="false" class="card-wrapper">
+                <NForm
+                  ref="rechargeFormRef"
+                  :model="rechargeForm"
+                  :rules="rechargeRules"
+                  label-placement="left"
+                  label-width="96"
+                >
+                  <NFormItem label="充值金额" path="amount">
+                    <NInputNumber v-model:value="rechargeForm.amount" :min="0.01" class="w-full" />
+                  </NFormItem>
+                  <NFormItem label="充值备注" path="remark">
+                    <NInput
+                      v-model:value="rechargeForm.remark"
+                      type="textarea"
+                      :autosize="{ minRows: 4, maxRows: 6 }"
+                    />
+                  </NFormItem>
+                  <NAlert type="info" :show-icon="false" class="mb-12px">
+                    渠道充值接口只返回操作结果，不返回余额快照；首次充值时后端会自动初始化渠道账务账户。
+                  </NAlert>
+                  <NButton type="primary" :loading="saving" @click="handleRecharge">提交充值</NButton>
+                </NForm>
+              </NCard>
+            </NSpace>
+          </NGi>
+
+          <NGi>
+            <NSpace vertical :size="16">
+              <RawJsonCard title="下单策略原始 JSON" :value="orderPolicy" />
+              <RawJsonCard title="限额规则原始 JSON" :value="orderPolicy.limitRule ?? {}" />
+            </NSpace>
           </NGi>
         </NGrid>
-
-        <div class="h-16px" />
-
-        <NCard title="充值记录" :bordered="false" class="card-wrapper">
-          <div class="mb-16px flex justify-end">
-            <NButton @click="loadRechargeRecords">刷新记录</NButton>
-          </div>
-          <NDataTable
-            :columns="rechargeColumns"
-            :data="rechargeRows"
-            :loading="rechargeLoading"
-            :pagination="{ pageSize: 10 }"
-            :row-key="row => getEntityId(row, ['recordId'])"
-          />
-        </NCard>
       </NTabPane>
     </NTabs>
 

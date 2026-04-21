@@ -60,7 +60,7 @@ async function loadDetail() {
   loading.value = true;
 
   try {
-    const { data } = await fetchOrderDetail(orderNo.value);
+    const data = await fetchOrderDetail(orderNo.value);
     detail.value = extractObjectData(data);
   } finally {
     loading.value = false;
@@ -71,7 +71,7 @@ async function loadEvents() {
   eventsLoading.value = true;
 
   try {
-    const { data } = await fetchOrderEvents(
+    const data = await fetchOrderEvents(
       orderNo.value,
       normalizeQuery({
         pageNum: eventPageNum.value,

@@ -2,28 +2,23 @@
 import { computed, h, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { NButton, NSpace } from 'naive-ui';
-import type { DataTableColumns, FormInst } from 'naive-ui';
-import { createSupplier, fetchSuppliers } from '@/service/api';
+import type { DataTableColumns } from 'naive-ui';
+import { fetchSuppliers } from '@/service/api';
 import {
   extractListData,
   extractPagedData,
-  formatBooleanLabel,
   getEntityId,
   getKeywordFilter,
   normalizeQuery,
   pickValue,
-  toBoolean,
   toPrettyJson
 } from '@/utils/admin';
 
 const router = useRouter();
 
 const loading = ref(false);
-const submitting = ref(false);
-const createVisible = ref(false);
 const rawVisible = ref(false);
 const rawRecord = ref<Api.Admin.RawRecord>({});
-const formRef = ref<FormInst | null>(null);
 
 const rows = ref<Api.Admin.RawRecord[]>([]);
 const total = ref(0);
@@ -35,26 +30,6 @@ const queryModel = reactive<Api.Admin.SupplierListQuery>({
   cooperationStatus: '',
   healthStatus: '',
   protocolType: ''
-});
-
-const formModel = reactive<Api.Admin.SaveSupplierPayload>({
-  supplierCode: '',
-  supplierName: '',
-  contactName: '',
-  contactPhone: '',
-  contactEmail: '',
-  baseUrl: '',
-  protocolType: '',
-  credentialMode: '',
-  accessAccount: '',
-  accessPassword: '',
-  cooperationStatus: '',
-  supportsBalanceQuery: true,
-  supportsRechargeRecords: false,
-  supportsConsumptionLog: false,
-  remark: '',
-  healthStatus: '',
-  status: 'ACTIVE'
 });
 
 const healthOptions = [
@@ -71,29 +46,6 @@ const cooperationOptions = [
   { label: 'INACTIVE', value: 'INACTIVE' }
 ];
 
-function renderDialogContent(lines: string[]) {
-  return () =>
-    h(
-      'div',
-      { class: 'flex flex-col gap-8px leading-6' },
-      lines.map((line, index) => h('div', { key: `${line}-${index}` }, line))
-    );
-}
-
-function showDeleteUnavailableDialog(row: Api.Admin.RawRecord) {
-  const supplierName = pickValue(row, ['supplierName', 'name'], '当前供应商');
-
-  window.$dialog?.warning({
-    title: `暂不能删除供应商：${supplierName}`,
-    content: renderDialogContent([
-      '新的 api.json 当前只提供了供应商新增、查询和更新接口，还没有提供供应商删除接口。',
-      '供应商真正删除时，必须由后端一并级联清理供应商产品快照、供应商充值记录、余额快照、消费日志，以及可能影响的订单路由关系。',
-      '为避免前端误删或出现数据残留，当前页面先只给出风险提示，不执行假删除。'
-    ]),
-    positiveText: '我知道了'
-  });
-}
-
 const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
   {
     key: 'supplierCode',
@@ -106,14 +58,9 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
     render: row => pickValue(row, ['supplierName', 'name'])
   },
   {
-    key: 'contactName',
-    title: '联系人',
-    render: row => pickValue(row, ['contactName', 'contact', 'contactPerson'])
-  },
-  {
     key: 'protocolType',
-    title: '协议',
-    render: row => pickValue(row, ['protocolType', 'protocol'])
+    title: '协议类型',
+    render: row => pickValue(row, ['protocolType'])
   },
   {
     key: 'cooperationStatus',
@@ -126,11 +73,6 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
     render: row => pickValue(row, ['healthStatus'])
   },
   {
-    key: 'supportsConsumptionLog',
-    title: '消费日志',
-    render: row => formatBooleanLabel(row.supportsConsumptionLog, '支持', '不支持')
-  },
-  {
     key: 'updatedAt',
     title: '更新时间',
     render: row => pickValue(row, ['updatedAt', 'createdAt'])
@@ -141,7 +83,7 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
     render: row => {
       const supplierId = getEntityId(row, ['supplierId', 'id', 'supplierCode']);
 
-      return h(NSpace, { size: 8, wrap: true }, () => [
+      return h(NSpace, { size: 8 }, () => [
         h(
           NButton,
           {
@@ -150,17 +92,7 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
             ghost: true,
             onClick: () => router.push(`/suppliers/detail/${supplierId}`)
           },
-          { default: () => '编辑' }
-        ),
-        h(
-          NButton,
-          {
-            size: 'small',
-            type: 'error',
-            ghost: true,
-            onClick: () => showDeleteUnavailableDialog(row)
-          },
-          { default: () => '删除' }
+          { default: () => '详情' }
         ),
         h(
           NButton,
@@ -179,80 +111,6 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
   }
 ]);
 
-const rules: Record<string, App.Global.FormRule[]> = {
-  supplierName: [{ required: true, message: '请输入供应商名称', trigger: 'blur' }],
-  protocolType: [{ required: true, message: '请输入协议类型', trigger: 'blur' }]
-};
-
-function resetForm() {
-  formModel.supplierCode = '';
-  formModel.supplierName = '';
-  formModel.contactName = '';
-  formModel.contactPhone = '';
-  formModel.contactEmail = '';
-  formModel.baseUrl = '';
-  formModel.protocolType = '';
-  formModel.credentialMode = '';
-  formModel.accessAccount = '';
-  formModel.accessPassword = '';
-  formModel.cooperationStatus = '';
-  formModel.supportsBalanceQuery = true;
-  formModel.supportsRechargeRecords = false;
-  formModel.supportsConsumptionLog = false;
-  formModel.remark = '';
-  formModel.healthStatus = '';
-  formModel.status = 'ACTIVE';
-}
-
-function openCreate() {
-  resetForm();
-  createVisible.value = true;
-}
-
-function buildCreatedSupplierRecord(result: Api.Admin.RawRecord) {
-  const supplierId = getEntityId(result, ['resourceId']) || `local-${Date.now()}`;
-  const now = new Date().toISOString();
-
-  return {
-    id: supplierId,
-    supplierId,
-    supplierCode: formModel.supplierCode?.trim() || null,
-    supplierName: formModel.supplierName.trim(),
-    contactName: formModel.contactName?.trim() || null,
-    contactPhone: formModel.contactPhone?.trim() || null,
-    contactEmail: formModel.contactEmail?.trim() || null,
-    baseUrl: formModel.baseUrl?.trim() || null,
-    protocolType: formModel.protocolType.trim(),
-    credentialMode: formModel.credentialMode?.trim() || null,
-    accessAccount: formModel.accessAccount?.trim() || null,
-    accessPassword: formModel.accessPassword?.trim() ? '******' : null,
-    cooperationStatus: formModel.cooperationStatus?.trim() || null,
-    supportsBalanceQuery: toBoolean(formModel.supportsBalanceQuery),
-    supportsRechargeRecords: toBoolean(formModel.supportsRechargeRecords),
-    supportsConsumptionLog: toBoolean(formModel.supportsConsumptionLog),
-    remark: formModel.remark?.trim() || null,
-    healthStatus: formModel.healthStatus?.trim() || null,
-    status: formModel.status?.trim() || 'ACTIVE',
-    createdAt: now,
-    updatedAt: now
-  } satisfies Api.Admin.RawRecord;
-}
-
-function prependCreatedSupplier(row: Api.Admin.RawRecord) {
-  const nextSupplierId = getEntityId(row, ['supplierId', 'id']);
-  const nextSupplierCode = pickValue(row, ['supplierCode'], '').toLowerCase();
-  const filteredRows = rows.value.filter(item => {
-    const currentSupplierId = getEntityId(item, ['supplierId', 'id']);
-    const currentSupplierCode = pickValue(item, ['supplierCode'], '').toLowerCase();
-
-    return currentSupplierId !== nextSupplierId && currentSupplierCode !== nextSupplierCode;
-  });
-
-  rows.value = [row, ...filteredRows].slice(0, pageSize.value);
-  total.value += 1;
-  pageNum.value = 1;
-}
-
 function applyLocalList(list: Api.Admin.RawRecord[]) {
   let filtered = list;
 
@@ -261,21 +119,19 @@ function applyLocalList(list: Api.Admin.RawRecord[]) {
   }
 
   if (queryModel.cooperationStatus) {
-    filtered = filtered.filter(row => pickValue(row, ['cooperationStatus'], '') === queryModel.cooperationStatus);
+    filtered = filtered.filter(item => pickValue(item, ['cooperationStatus'], '') === queryModel.cooperationStatus);
   }
 
   if (queryModel.healthStatus) {
-    filtered = filtered.filter(row => pickValue(row, ['healthStatus'], '') === queryModel.healthStatus);
+    filtered = filtered.filter(item => pickValue(item, ['healthStatus'], '') === queryModel.healthStatus);
   }
 
   if (queryModel.protocolType) {
-    filtered = filtered.filter(row =>
-      pickValue(row, ['protocolType'], '').toLowerCase().includes(queryModel.protocolType!.toLowerCase())
-    );
+    const keyword = queryModel.protocolType.toLowerCase();
+    filtered = filtered.filter(item => pickValue(item, ['protocolType'], '').toLowerCase().includes(keyword));
   }
 
   total.value = filtered.length;
-
   const start = (pageNum.value - 1) * pageSize.value;
   rows.value = filtered.slice(start, start + pageSize.value);
 }
@@ -284,22 +140,22 @@ async function loadSuppliers() {
   loading.value = true;
 
   try {
-    const supplierData = await fetchSuppliers(
+    const data = await fetchSuppliers(
       normalizeQuery({
         pageNum: pageNum.value,
         pageSize: pageSize.value,
-        sortBy: 'createdAt',
+        sortBy: 'updatedAt',
         sortOrder: 'desc',
         ...queryModel
       })
     );
 
-    if (Array.isArray(supplierData)) {
-      applyLocalList(extractListData(supplierData));
+    if (Array.isArray(data)) {
+      applyLocalList(extractListData(data));
       return;
     }
 
-    const pageData = extractPagedData(supplierData);
+    const pageData = extractPagedData(data);
     rows.value = pageData.records;
     total.value = pageData.total;
     pageNum.value = pageData.pageNum;
@@ -334,42 +190,6 @@ async function handlePageSizeChange(size: number) {
   await loadSuppliers();
 }
 
-async function submitCreate() {
-  await formRef.value?.validate();
-  submitting.value = true;
-
-  try {
-    const result = await createSupplier(
-      normalizeQuery({
-        ...formModel,
-        supplierCode: formModel.supplierCode?.trim(),
-        supplierName: formModel.supplierName.trim(),
-        contactName: formModel.contactName?.trim(),
-        contactPhone: formModel.contactPhone?.trim(),
-        contactEmail: formModel.contactEmail?.trim(),
-        baseUrl: formModel.baseUrl?.trim(),
-        protocolType: formModel.protocolType.trim(),
-        credentialMode: formModel.credentialMode?.trim(),
-        accessAccount: formModel.accessAccount?.trim(),
-        accessPassword: formModel.accessPassword?.trim(),
-        cooperationStatus: formModel.cooperationStatus?.trim(),
-        remark: formModel.remark?.trim(),
-        healthStatus: formModel.healthStatus?.trim(),
-        status: formModel.status?.trim(),
-        supportsBalanceQuery: toBoolean(formModel.supportsBalanceQuery),
-        supportsRechargeRecords: toBoolean(formModel.supportsRechargeRecords),
-        supportsConsumptionLog: toBoolean(formModel.supportsConsumptionLog)
-      }) as Api.Admin.SaveSupplierPayload
-    );
-
-    window.$message?.success('供应商创建成功');
-    prependCreatedSupplier(buildCreatedSupplierRecord(result));
-    createVisible.value = false;
-  } finally {
-    submitting.value = false;
-  }
-}
-
 onMounted(() => {
   loadSuppliers();
 });
@@ -377,11 +197,15 @@ onMounted(() => {
 
 <template>
   <NSpace vertical :size="16">
+    <NAlert type="info" :show-icon="false">
+      新版 API 的供应商模块仅提供列表、余额、目录同步、熔断恢复、同步日志、对账差异和参数配置能力，不再提供前端创建、删除、充值记录和消费日志接口。
+    </NAlert>
+
     <NCard :bordered="false" class="card-wrapper">
       <div class="flex flex-col gap-12px">
         <NGrid cols="1 s:2 m:4" responsive="screen" :x-gap="12" :y-gap="12">
           <NGi>
-            <NInput v-model:value="queryModel.keyword" clearable placeholder="搜索名称、编码、联系人" />
+            <NInput v-model:value="queryModel.keyword" clearable placeholder="搜索编码、名称、协议" />
           </NGi>
           <NGi>
             <NSelect v-model:value="queryModel.cooperationStatus" :options="cooperationOptions" />
@@ -395,8 +219,7 @@ onMounted(() => {
         </NGrid>
         <div class="flex flex-wrap justify-end gap-12px">
           <NButton @click="handleReset">重置</NButton>
-          <NButton @click="handleSearch">查询</NButton>
-          <NButton type="primary" @click="openCreate">新增供应商</NButton>
+          <NButton type="primary" @click="handleSearch">查询</NButton>
         </div>
       </div>
     </NCard>
@@ -421,102 +244,6 @@ onMounted(() => {
         />
       </div>
     </NCard>
-
-    <NModal v-model:show="createVisible" preset="card" title="新增供应商" class="w-760px">
-      <NForm ref="formRef" :model="formModel" :rules="rules" label-placement="left" label-width="110">
-        <NGrid cols="1 s:2" responsive="screen" :x-gap="16">
-          <NGi>
-            <NFormItem label="供应商编码">
-              <NInput v-model:value="formModel.supplierCode" placeholder="可选，不填则由后端生成" />
-            </NFormItem>
-          </NGi>
-          <NGi>
-            <NFormItem label="供应商名称" path="supplierName">
-              <NInput v-model:value="formModel.supplierName" />
-            </NFormItem>
-          </NGi>
-          <NGi>
-            <NFormItem label="联系人">
-              <NInput v-model:value="formModel.contactName" />
-            </NFormItem>
-          </NGi>
-          <NGi>
-            <NFormItem label="联系电话">
-              <NInput v-model:value="formModel.contactPhone" />
-            </NFormItem>
-          </NGi>
-          <NGi>
-            <NFormItem label="联系邮箱">
-              <NInput v-model:value="formModel.contactEmail" />
-            </NFormItem>
-          </NGi>
-          <NGi>
-            <NFormItem label="接口地址">
-              <NInput v-model:value="formModel.baseUrl" />
-            </NFormItem>
-          </NGi>
-          <NGi>
-            <NFormItem label="协议类型" path="protocolType">
-              <NInput v-model:value="formModel.protocolType" placeholder="例如 HTTP / HTTPS / PRIVATE" />
-            </NFormItem>
-          </NGi>
-          <NGi>
-            <NFormItem label="认证模式">
-              <NInput v-model:value="formModel.credentialMode" placeholder="例如 BASIC / TOKEN" />
-            </NFormItem>
-          </NGi>
-          <NGi>
-            <NFormItem label="接入账号">
-              <NInput v-model:value="formModel.accessAccount" />
-            </NFormItem>
-          </NGi>
-          <NGi>
-            <NFormItem label="接入密码">
-              <NInput v-model:value="formModel.accessPassword" type="password" show-password-on="click" />
-            </NFormItem>
-          </NGi>
-          <NGi>
-            <NFormItem label="合作状态">
-              <NInput v-model:value="formModel.cooperationStatus" placeholder="例如 ACTIVE / PAUSED" />
-            </NFormItem>
-          </NGi>
-          <NGi>
-            <NFormItem label="健康状态">
-              <NInput v-model:value="formModel.healthStatus" placeholder="例如 HEALTHY" />
-            </NFormItem>
-          </NGi>
-          <NGi>
-            <NFormItem label="支持余额查询">
-              <NSwitch v-model:value="formModel.supportsBalanceQuery" />
-            </NFormItem>
-          </NGi>
-          <NGi>
-            <NFormItem label="支持充值记录">
-              <NSwitch v-model:value="formModel.supportsRechargeRecords" />
-            </NFormItem>
-          </NGi>
-          <NGi>
-            <NFormItem label="支持消费日志">
-              <NSwitch v-model:value="formModel.supportsConsumptionLog" />
-            </NFormItem>
-          </NGi>
-          <NGi>
-            <NFormItem label="状态">
-              <NInput v-model:value="formModel.status" placeholder="例如 ACTIVE" />
-            </NFormItem>
-          </NGi>
-        </NGrid>
-        <NFormItem label="备注">
-          <NInput v-model:value="formModel.remark" type="textarea" :autosize="{ minRows: 3, maxRows: 5 }" />
-        </NFormItem>
-      </NForm>
-      <template #footer>
-        <div class="flex justify-end gap-12px">
-          <NButton @click="createVisible = false">取消</NButton>
-          <NButton type="primary" :loading="submitting" @click="submitCreate">提交</NButton>
-        </div>
-      </template>
-    </NModal>
 
     <NModal v-model:show="rawVisible" preset="card" title="供应商原始数据" class="w-720px">
       <NCode :code="toPrettyJson(rawRecord)" language="json" word-wrap />

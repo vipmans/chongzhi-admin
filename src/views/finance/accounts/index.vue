@@ -53,7 +53,7 @@ async function loadRows() {
   loading.value = true;
 
   try {
-    const { data } = await fetchAccounts(
+    const data = await fetchAccounts(
       normalizeQuery({
         pageNum: pageNum.value,
         pageSize: pageSize.value,

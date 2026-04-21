@@ -37,6 +37,10 @@ declare module "@elegant-router/types" {
     "notifications_dead-letters": "/notifications/dead-letters";
     "notifications_detail": "/notifications/detail/:taskNo";
     "notifications_tasks": "/notifications/tasks";
+    "ops": "/ops";
+    "ops_audit-logs": "/ops/audit-logs";
+    "ops_jobs": "/ops/jobs";
+    "ops_login-logs": "/ops/login-logs";
     "orders": "/orders";
     "orders_detail": "/orders/detail/:orderNo";
     "orders_list": "/orders/list";
@@ -91,6 +95,7 @@ declare module "@elegant-router/types" {
     | "iframe-page"
     | "login"
     | "notifications"
+    | "ops"
     | "orders"
     | "products"
     | "risk"
@@ -127,6 +132,9 @@ declare module "@elegant-router/types" {
     | "notifications_dead-letters"
     | "notifications_detail"
     | "notifications_tasks"
+    | "ops_audit-logs"
+    | "ops_jobs"
+    | "ops_login-logs"
     | "orders_detail"
     | "orders_list"
     | "products_detail"

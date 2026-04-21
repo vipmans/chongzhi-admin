@@ -81,7 +81,7 @@ async function loadOrders() {
   loading.value = true;
 
   try {
-    const { data } = await fetchOrders(
+    const data = await fetchOrders(
       normalizeQuery({
         pageNum: pageNum.value,
         pageSize: pageSize.value,

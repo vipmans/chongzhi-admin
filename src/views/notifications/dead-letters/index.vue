@@ -53,7 +53,7 @@ async function loadRows() {
   loading.value = true;
 
   try {
-    const { data } = await fetchNotificationDeadLetters(
+    const data = await fetchNotificationDeadLetters(
       normalizeQuery({
         pageNum: pageNum.value,
         pageSize: pageSize.value,

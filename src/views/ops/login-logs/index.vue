@@ -2,15 +2,8 @@
 import { computed, h, onMounted, reactive, ref } from 'vue';
 import { NButton } from 'naive-ui';
 import type { DataTableColumns } from 'naive-ui';
-import { fetchRiskDecisions } from '@/service/api';
-import {
-  extractPagedData,
-  getDateTimeRange,
-  getEntityId,
-  normalizeQuery,
-  pickValue,
-  toPrettyJson
-} from '@/utils/admin';
+import { fetchLoginLogs } from '@/service/api';
+import { extractPagedData, getDateTimeRange, getEntityId, normalizeQuery, pickValue, toPrettyJson } from '@/utils/admin';
 
 const loading = ref(false);
 const rows = ref<Api.Admin.RawRecord[]>([]);
@@ -26,19 +19,13 @@ const queryModel = reactive({
   status: ''
 });
 
-const statusOptions = [
-  { label: '全部状态', value: '' },
-  { label: 'PASS', value: 'PASS' },
-  { label: 'REVIEW', value: 'REVIEW' },
-  { label: 'REJECT', value: 'REJECT' }
-];
-
 const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
-  { key: 'orderNo', title: '订单号', render: row => pickValue(row, ['orderNo']) },
-  { key: 'decision', title: '决策结果', render: row => pickValue(row, ['decision', 'result']) },
-  { key: 'reason', title: '决策原因', render: row => pickValue(row, ['reason']) },
-  { key: 'ruleCode', title: '命中规则', render: row => pickValue(row, ['ruleCode', 'matchedRuleCode']) },
-  { key: 'createdAt', title: '决策时间', render: row => pickValue(row, ['createdAt', 'createTime']) },
+  { key: 'username', title: '用户名', render: row => pickValue(row, ['username']) },
+  { key: 'result', title: '登录结果', render: row => pickValue(row, ['result']) },
+  { key: 'ip', title: 'IP', render: row => pickValue(row, ['ip']) },
+  { key: 'deviceSummary', title: '设备信息', render: row => pickValue(row, ['deviceSummary']) },
+  { key: 'failureReason', title: '失败原因', render: row => pickValue(row, ['failureReason']) },
+  { key: 'createdAt', title: '登录时间', render: row => pickValue(row, ['createdAt']) },
   {
     key: 'actions',
     title: '操作',
@@ -53,7 +40,7 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
             rawVisible.value = true;
           }
         },
-        { default: () => '查看原始' }
+        { default: () => '原始数据' }
       )
   }
 ]);
@@ -62,11 +49,12 @@ async function loadRows() {
   loading.value = true;
 
   try {
-    const data = await fetchRiskDecisions(
+    const data = await fetchLoginLogs(
       normalizeQuery({
         pageNum: pageNum.value,
         pageSize: pageSize.value,
-        ...queryModel,
+        keyword: queryModel.keyword,
+        status: queryModel.status,
         ...getDateTimeRange(timeRange.value)
       })
     );
@@ -81,30 +69,6 @@ async function loadRows() {
   }
 }
 
-async function handleSearch() {
-  pageNum.value = 1;
-  await loadRows();
-}
-
-async function handleReset() {
-  queryModel.keyword = '';
-  queryModel.status = '';
-  timeRange.value = null;
-  pageNum.value = 1;
-  await loadRows();
-}
-
-async function handlePageChange(page: number) {
-  pageNum.value = page;
-  await loadRows();
-}
-
-async function handlePageSizeChange(size: number) {
-  pageSize.value = size;
-  pageNum.value = 1;
-  await loadRows();
-}
-
 onMounted(() => {
   loadRows();
 });
@@ -115,29 +79,42 @@ onMounted(() => {
     <NCard :bordered="false" class="card-wrapper">
       <div class="flex flex-col gap-12px">
         <NSpace wrap>
-          <NInput
-            v-model:value="queryModel.keyword"
-            clearable
-            placeholder="搜索订单号、规则、决策结果"
-            class="lg:w-320px"
-          />
-          <NSelect v-model:value="queryModel.status" :options="statusOptions" class="min-w-160px" />
+          <NInput v-model:value="queryModel.keyword" clearable placeholder="搜索用户名、IP、设备信息" class="lg:w-360px" />
+          <NInput v-model:value="queryModel.status" clearable placeholder="登录结果" class="lg:w-200px" />
           <NDatePicker v-model:value="timeRange" type="datetimerange" clearable class="min-w-280px" />
         </NSpace>
         <div class="flex flex-wrap justify-end gap-12px">
-          <NButton @click="handleReset">重置</NButton>
-          <NButton @click="handleSearch">查询</NButton>
+          <NButton
+            @click="
+              queryModel.keyword = '';
+              queryModel.status = '';
+              timeRange = null;
+              pageNum = 1;
+              loadRows();
+            "
+          >
+            重置
+          </NButton>
+          <NButton
+            type="primary"
+            @click="
+              pageNum = 1;
+              loadRows();
+            "
+          >
+            查询
+          </NButton>
         </div>
       </div>
     </NCard>
 
-    <NCard title="风控决策记录" :bordered="false" class="card-wrapper">
+    <NCard title="后台登录日志" :bordered="false" class="card-wrapper">
       <NDataTable
         :columns="columns"
         :data="rows"
         :loading="loading"
         remote
-        :row-key="row => getEntityId(row, ['id', 'decisionId', 'orderNo'])"
+        :row-key="row => getEntityId(row, ['id', 'createdAt'])"
       />
       <div class="mt-16px flex justify-end">
         <NPagination
@@ -146,13 +123,24 @@ onMounted(() => {
           :item-count="total"
           show-size-picker
           :page-sizes="[10, 20, 50, 100]"
-          @update:page="handlePageChange"
-          @update:page-size="handlePageSizeChange"
+          @update:page="
+            value => {
+              pageNum = value;
+              loadRows();
+            }
+          "
+          @update:page-size="
+            value => {
+              pageSize = value;
+              pageNum = 1;
+              loadRows();
+            }
+          "
         />
       </div>
     </NCard>
 
-    <NModal v-model:show="rawVisible" preset="card" title="决策原始数据" class="w-720px">
+    <NModal v-model:show="rawVisible" preset="card" title="登录日志原始数据" class="w-760px">
       <NCode :code="toPrettyJson(rawRecord)" language="json" word-wrap />
     </NModal>
   </NSpace>

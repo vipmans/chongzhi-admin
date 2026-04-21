@@ -60,7 +60,7 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
           {
             size: 'small',
             onClick: async () => {
-              await retryNotificationTask(taskNo);
+              await retryNotificationTask(taskNo, 'manual retry from notification task list');
               window.$message?.success('通知任务已重试');
               await loadRows();
             }
@@ -88,7 +88,7 @@ async function loadRows() {
   loading.value = true;
 
   try {
-    const { data } = await fetchNotificationTasks(
+    const data = await fetchNotificationTasks(
       normalizeQuery({
         pageNum: pageNum.value,
         pageSize: pageSize.value,
