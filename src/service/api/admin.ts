@@ -255,6 +255,12 @@ export function fetchProducts(params?: Api.Admin.ProductListQuery) {
   });
 }
 
+export function fetchProductDetail(productId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/products/${productId}`
+  });
+}
+
 export function createProduct(data: Api.Admin.SaveProductPayload) {
   return request<Api.Admin.RawRecord>({
     url: '/admin/products',
@@ -267,6 +273,86 @@ export function updateProduct(productId: string, data: Api.Admin.SaveProductPayl
   return request<Api.Admin.RawRecord>({
     url: `/admin/products/${productId}`,
     method: 'put',
+    data
+  });
+}
+
+export function fetchProductSupplierMappings(productId: string) {
+  return request<Api.Admin.RawList>({
+    url: `/admin/products/${productId}/supplier-mappings`
+  });
+}
+
+export function createProductSupplierMapping(data: Api.Admin.SaveProductSupplierMappingPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: '/admin/product-supplier-mappings',
+    method: 'post',
+    data
+  });
+}
+
+export function updateProductSupplierMapping(mappingId: string, data: Api.Admin.SaveProductSupplierMappingPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/product-supplier-mappings/${mappingId}`,
+    method: 'put',
+    data
+  });
+}
+
+export function deleteProductSupplierMapping(mappingId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/product-supplier-mappings/${mappingId}`,
+    method: 'delete'
+  });
+}
+
+export function fetchProductPlatformPricing(productId: string) {
+  return request<Api.Admin.RawList>({
+    url: `/admin/products/${productId}/platform-pricing`
+  });
+}
+
+export function createProductPlatformPrice(data: Api.Admin.SaveProductPlatformPricePayload) {
+  return request<Api.Admin.RawRecord>({
+    url: '/admin/product-platform-prices',
+    method: 'post',
+    data
+  });
+}
+
+export function updateProductPlatformPrice(priceId: string, data: Api.Admin.SaveProductPlatformPricePayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/product-platform-prices/${priceId}`,
+    method: 'put',
+    data
+  });
+}
+
+export function fetchProductDiscountRules(params?: Api.Admin.PagedQuery & { productId?: string }) {
+  return request<Api.Admin.RawList>({
+    url: '/admin/product-discount-rules',
+    params
+  });
+}
+
+export function fetchProductRoutePolicy(productId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/products/${productId}/route-policy`
+  });
+}
+
+export function saveProductRoutePolicy(productId: string, data: Api.Admin.SaveProductRoutePolicyPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/products/${productId}/route-policy`,
+    method: 'put',
+    data
+  });
+}
+
+export function previewProductRoute(productId: string, data: Api.Admin.ProductRoutePreviewPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/products/${productId}/route-preview`,
+    method: 'post',
     data
   });
 }

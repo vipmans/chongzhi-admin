@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed, h, onMounted, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { NButton, NSpace } from 'naive-ui';
 import type { DataTableColumns, FormInst } from 'naive-ui';
 import { createProduct, fetchProducts, updateProduct } from '@/service/api';
 import { extractPagedData, getEntityId, normalizeQuery, pickValue, toPrettyJson } from '@/utils/admin';
+
+const router = useRouter();
 
 const loading = ref(false);
 const submitting = ref(false);
@@ -99,6 +102,16 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
           NButton,
           {
             size: 'small',
+            type: 'info',
+            ghost: true,
+            onClick: () => router.push(`/products/detail/${getEntityId(row, ['productId', 'id', 'productCode'])}`)
+          },
+          { default: () => '配置详情' }
+        ),
+        h(
+          NButton,
+          {
+            size: 'small',
             type: 'primary',
             ghost: true,
             onClick: () => openEdit(row)
@@ -163,7 +176,7 @@ async function loadProducts() {
   loading.value = true;
 
   try {
-    const { data } = await fetchProducts(
+    const data = await fetchProducts(
       normalizeQuery({
         pageNum: pageNum.value,
         pageSize: pageSize.value,

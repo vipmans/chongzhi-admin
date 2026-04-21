@@ -264,6 +264,14 @@ export const generatedRoutes: GeneratedRoute[] = [
     },
     children: [
       {
+        name: 'products_detail',
+        path: '/products/detail/:id',
+        component: 'view.products_detail',
+        meta: {
+          title: 'products_detail'
+        }
+      },
+      {
         name: 'products_list',
         path: '/products/list',
         component: 'view.products_list',

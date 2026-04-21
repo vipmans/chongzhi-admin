@@ -187,6 +187,7 @@ const routeMap: RouteMap = {
   "orders_detail": "/orders/detail/:orderNo",
   "orders_list": "/orders/list",
   "products": "/products",
+  "products_detail": "/products/detail/:id",
   "products_list": "/products/list",
   "risk": "/risk",
   "risk_decisions": "/risk/decisions",

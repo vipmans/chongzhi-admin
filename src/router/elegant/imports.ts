@@ -33,6 +33,7 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   notifications_tasks: () => import("@/views/notifications/tasks/index.vue"),
   orders_detail: () => import("@/views/orders/detail/[orderNo].vue"),
   orders_list: () => import("@/views/orders/list/index.vue"),
+  products_detail: () => import("@/views/products/detail/[id].vue"),
   products_list: () => import("@/views/products/list/index.vue"),
   risk_decisions: () => import("@/views/risk/decisions/index.vue"),
   risk_lists: () => import("@/views/risk/lists/index.vue"),

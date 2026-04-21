@@ -207,6 +207,66 @@ declare namespace Api {
       salePrice: number;
     }
 
+    interface SaveProductSupplierMappingPayload {
+      productId: string;
+      supplierId: string;
+      supplierProductId: string;
+      supplierProductCode?: string;
+      matchMode?: string;
+      priorityNo?: number;
+      isDefault?: boolean;
+      isFallback?: boolean;
+      purchasePriceMode?: string;
+      purchasePriceFen?: number;
+      routeWeight?: number;
+      mappingStatus?: string;
+      effectiveFrom?: string;
+      effectiveTo?: string;
+      remark?: string;
+    }
+
+    interface SaveProductPlatformPricePayload {
+      productId: string;
+      priceType: string;
+      currency: string;
+      saleAmountFen: number;
+      minSaleAmountFen?: number;
+      maxSaleAmountFen?: number;
+      grossProfitMode?: string;
+      grossProfitValue?: number;
+      pricingStatus?: string;
+      effectiveFrom?: string;
+      effectiveTo?: string;
+      remark?: string;
+    }
+
+    interface SaveProductRoutePolicyPayload {
+      policyCode?: string;
+      policyName?: string;
+      routeMode: string;
+      failoverEnabled?: boolean;
+      priceProtectEnabled?: boolean;
+      maxPurchasePriceFen?: number;
+      profitSortEnabled?: boolean;
+      inventoryCheckEnabled?: boolean;
+      supplierHealthCheckEnabled?: boolean;
+      timeoutFallbackEnabled?: boolean;
+      timeoutMs?: number;
+      routeExplainEnabled?: boolean;
+      policyStatus?: string;
+      remark?: string;
+      items?: JsonObject[];
+    }
+
+    interface ProductRoutePreviewPayload {
+      channelId?: string;
+      mobile?: string;
+      faceValue?: number;
+      productType?: ProductType | string;
+      carrierCode?: CarrierCode | string;
+      provinceName?: string;
+    }
+
     interface SaveChannelLimitPayload {
       channelId: string;
       singleLimit: number;

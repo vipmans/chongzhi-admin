@@ -41,6 +41,7 @@ declare module "@elegant-router/types" {
     "orders_detail": "/orders/detail/:orderNo";
     "orders_list": "/orders/list";
     "products": "/products";
+    "products_detail": "/products/detail/:id";
     "products_list": "/products/list";
     "risk": "/risk";
     "risk_decisions": "/risk/decisions";
@@ -128,6 +129,7 @@ declare module "@elegant-router/types" {
     | "notifications_tasks"
     | "orders_detail"
     | "orders_list"
+    | "products_detail"
     | "products_list"
     | "risk_decisions"
     | "risk_lists"
