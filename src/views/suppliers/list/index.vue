@@ -71,6 +71,29 @@ const cooperationOptions = [
   { label: 'INACTIVE', value: 'INACTIVE' }
 ];
 
+function renderDialogContent(lines: string[]) {
+  return () =>
+    h(
+      'div',
+      { class: 'flex flex-col gap-8px leading-6' },
+      lines.map((line, index) => h('div', { key: `${line}-${index}` }, line))
+    );
+}
+
+function showDeleteUnavailableDialog(row: Api.Admin.RawRecord) {
+  const supplierName = pickValue(row, ['supplierName', 'name'], '当前供应商');
+
+  window.$dialog?.warning({
+    title: `暂不能删除供应商：${supplierName}`,
+    content: renderDialogContent([
+      '新的 api.json 当前只提供了供应商新增、查询和更新接口，还没有提供供应商删除接口。',
+      '供应商真正删除时，必须由后端一并级联清理供应商产品快照、供应商充值记录、余额快照、消费日志，以及可能影响的订单路由关系。',
+      '为避免前端误删或出现数据残留，当前页面先只给出风险提示，不执行假删除。'
+    ]),
+    positiveText: '我知道了'
+  });
+}
+
 const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
   {
     key: 'supplierCode',
@@ -118,7 +141,7 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
     render: row => {
       const supplierId = getEntityId(row, ['supplierId', 'id', 'supplierCode']);
 
-      return h(NSpace, { size: 8 }, () => [
+      return h(NSpace, { size: 8, wrap: true }, () => [
         h(
           NButton,
           {
@@ -127,7 +150,17 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
             ghost: true,
             onClick: () => router.push(`/suppliers/detail/${supplierId}`)
           },
-          { default: () => '详情' }
+          { default: () => '编辑' }
+        ),
+        h(
+          NButton,
+          {
+            size: 'small',
+            type: 'error',
+            ghost: true,
+            onClick: () => showDeleteUnavailableDialog(row)
+          },
+          { default: () => '删除' }
         ),
         h(
           NButton,
@@ -176,6 +209,50 @@ function openCreate() {
   createVisible.value = true;
 }
 
+function buildCreatedSupplierRecord(result: Api.Admin.RawRecord) {
+  const supplierId = getEntityId(result, ['resourceId']) || `local-${Date.now()}`;
+  const now = new Date().toISOString();
+
+  return {
+    id: supplierId,
+    supplierId,
+    supplierCode: formModel.supplierCode?.trim() || null,
+    supplierName: formModel.supplierName.trim(),
+    contactName: formModel.contactName?.trim() || null,
+    contactPhone: formModel.contactPhone?.trim() || null,
+    contactEmail: formModel.contactEmail?.trim() || null,
+    baseUrl: formModel.baseUrl?.trim() || null,
+    protocolType: formModel.protocolType.trim(),
+    credentialMode: formModel.credentialMode?.trim() || null,
+    accessAccount: formModel.accessAccount?.trim() || null,
+    accessPassword: formModel.accessPassword?.trim() ? '******' : null,
+    cooperationStatus: formModel.cooperationStatus?.trim() || null,
+    supportsBalanceQuery: toBoolean(formModel.supportsBalanceQuery),
+    supportsRechargeRecords: toBoolean(formModel.supportsRechargeRecords),
+    supportsConsumptionLog: toBoolean(formModel.supportsConsumptionLog),
+    remark: formModel.remark?.trim() || null,
+    healthStatus: formModel.healthStatus?.trim() || null,
+    status: formModel.status?.trim() || 'ACTIVE',
+    createdAt: now,
+    updatedAt: now
+  } satisfies Api.Admin.RawRecord;
+}
+
+function prependCreatedSupplier(row: Api.Admin.RawRecord) {
+  const nextSupplierId = getEntityId(row, ['supplierId', 'id']);
+  const nextSupplierCode = pickValue(row, ['supplierCode'], '').toLowerCase();
+  const filteredRows = rows.value.filter(item => {
+    const currentSupplierId = getEntityId(item, ['supplierId', 'id']);
+    const currentSupplierCode = pickValue(item, ['supplierCode'], '').toLowerCase();
+
+    return currentSupplierId !== nextSupplierId && currentSupplierCode !== nextSupplierCode;
+  });
+
+  rows.value = [row, ...filteredRows].slice(0, pageSize.value);
+  total.value += 1;
+  pageNum.value = 1;
+}
+
 function applyLocalList(list: Api.Admin.RawRecord[]) {
   let filtered = list;
 
@@ -207,20 +284,22 @@ async function loadSuppliers() {
   loading.value = true;
 
   try {
-    const { data } = await fetchSuppliers(
+    const supplierData = await fetchSuppliers(
       normalizeQuery({
         pageNum: pageNum.value,
         pageSize: pageSize.value,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
         ...queryModel
       })
     );
 
-    if (Array.isArray(data)) {
-      applyLocalList(extractListData(data));
+    if (Array.isArray(supplierData)) {
+      applyLocalList(extractListData(supplierData));
       return;
     }
 
-    const pageData = extractPagedData(data);
+    const pageData = extractPagedData(supplierData);
     rows.value = pageData.records;
     total.value = pageData.total;
     pageNum.value = pageData.pageNum;
@@ -260,7 +339,7 @@ async function submitCreate() {
   submitting.value = true;
 
   try {
-    await createSupplier(
+    const result = await createSupplier(
       normalizeQuery({
         ...formModel,
         supplierCode: formModel.supplierCode?.trim(),
@@ -284,9 +363,8 @@ async function submitCreate() {
     );
 
     window.$message?.success('供应商创建成功');
+    prependCreatedSupplier(buildCreatedSupplierRecord(result));
     createVisible.value = false;
-    pageNum.value = 1;
-    await loadSuppliers();
   } finally {
     submitting.value = false;
   }

@@ -258,6 +258,51 @@ function openRaw(title: string, value: unknown) {
   rawVisible.value = true;
 }
 
+function renderDialogContent(lines: string[]) {
+  return () =>
+    h(
+      'div',
+      { class: 'flex flex-col gap-8px leading-6' },
+      lines.map((line, index) => h('div', { key: `${line}-${index}` }, line))
+    );
+}
+
+function confirmChannelSaveRisk() {
+  return new Promise<boolean>(resolve => {
+    let settled = false;
+
+    const finish = (value: boolean) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      resolve(value);
+    };
+
+    const dialog = window.$dialog;
+
+    if (!dialog) {
+      finish(true);
+      return;
+    }
+
+    dialog.warning({
+      title: '确认修改渠道信息',
+      content: renderDialogContent([
+        '修改渠道编码、门户登录账号、协议、合作状态、结算模式或消费日志能力，可能影响渠道门户登录、余额展示、充值记录、商品授权、价格策略和接口调用。',
+        '如果该渠道已经配置了 API 凭证、回调地址、拆单策略或已有订单，错误修改可能导致回调失败、路由异常或后续功能缺陷。',
+        '请确认已经完成影响评估后再继续保存。'
+      ]),
+      positiveText: '继续保存',
+      negativeText: '取消',
+      onPositiveClick: () => finish(true),
+      onNegativeClick: () => finish(false),
+      onClose: () => finish(false)
+    });
+  });
+}
+
 function syncForms() {
   apiKeyForm.channelId = channelId.value;
   callbackForm.channelId = channelId.value;
@@ -384,6 +429,12 @@ async function reloadAll() {
 
 async function handleSaveBasic() {
   await basicFormRef.value?.validate();
+  const confirmed = await confirmChannelSaveRisk();
+
+  if (!confirmed) {
+    return;
+  }
+
   savingBasic.value = true;
 
   try {

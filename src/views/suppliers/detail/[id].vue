@@ -194,6 +194,51 @@ function openRaw(title: string, value: unknown) {
   rawVisible.value = true;
 }
 
+function renderDialogContent(lines: string[]) {
+  return () =>
+    h(
+      'div',
+      { class: 'flex flex-col gap-8px leading-6' },
+      lines.map((line, index) => h('div', { key: `${line}-${index}` }, line))
+    );
+}
+
+function confirmSupplierSaveRisk() {
+  return new Promise<boolean>(resolve => {
+    let settled = false;
+
+    const finish = (value: boolean) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      resolve(value);
+    };
+
+    const dialog = window.$dialog;
+
+    if (!dialog) {
+      finish(true);
+      return;
+    }
+
+    dialog.warning({
+      title: '确认修改供应商信息',
+      content: renderDialogContent([
+        '修改供应商名称、接入账号、协议、合作状态或能力开关，可能影响供应商产品快照、余额同步、充值记录、消费日志和订单路由。',
+        '如果供应商正在被渠道商品或订单履约使用，错误修改可能导致接口调用失败、余额显示异常或后续业务功能缺失。',
+        '请确认已经评估影响范围后再继续保存。'
+      ]),
+      positiveText: '继续保存',
+      negativeText: '取消',
+      onPositiveClick: () => finish(true),
+      onNegativeClick: () => finish(false),
+      onClose: () => finish(false)
+    });
+  });
+}
+
 function syncSupplierForm(record: Api.Admin.RawRecord) {
   supplierForm.supplierCode = pickValue(record, ['supplierCode'], '');
   supplierForm.supplierName = pickValue(record, ['supplierName'], '');
@@ -237,9 +282,9 @@ async function loadOverview() {
       fetchSupplierBalance(supplierId.value)
     ]);
 
-    supplier.value = extractObjectData(detailRes.data);
-    health.value = extractObjectData(healthRes.data);
-    balance.value = extractObjectData(balanceRes.data);
+    supplier.value = extractObjectData(detailRes);
+    health.value = extractObjectData(healthRes);
+    balance.value = extractObjectData(balanceRes);
     syncSupplierForm(supplier.value);
   } finally {
     loading.value = false;
@@ -250,7 +295,7 @@ async function loadProducts() {
   productsLoading.value = true;
 
   try {
-    const { data } = await fetchSupplierProducts(
+    const data = await fetchSupplierProducts(
       supplierId.value,
       normalizeQuery({
         carrierCode: productQuery.carrierCode || undefined,
@@ -271,7 +316,7 @@ async function loadRechargeRecords() {
   rechargeLoading.value = true;
 
   try {
-    const { data } = await fetchSupplierRechargeRecords(supplierId.value);
+    const data = await fetchSupplierRechargeRecords(supplierId.value);
     rechargeRows.value = extractListData(data);
   } finally {
     rechargeLoading.value = false;
@@ -282,7 +327,7 @@ async function loadConsumptionLogs() {
   logsLoading.value = true;
 
   try {
-    const { data } = await fetchSupplierConsumptionLogs(
+    const data = await fetchSupplierConsumptionLogs(
       supplierId.value,
       normalizeQuery({
         mobile: logQuery.mobile,
@@ -304,6 +349,12 @@ async function reloadAll() {
 
 async function handleSaveSupplier() {
   await supplierFormRef.value?.validate();
+  const confirmed = await confirmSupplierSaveRisk();
+
+  if (!confirmed) {
+    return;
+  }
+
   saving.value = true;
 
   try {
@@ -342,7 +393,7 @@ async function handleRefreshBalance() {
   refreshingBalance.value = true;
 
   try {
-    const { data } = await refreshSupplierBalance(supplierId.value);
+    const data = await refreshSupplierBalance(supplierId.value);
     balance.value = extractObjectData(data);
     window.$message?.success('供应商余额已刷新');
   } finally {

@@ -72,6 +72,29 @@ const cooperationOptions = [
   { label: 'INACTIVE', value: 'INACTIVE' }
 ];
 
+function renderDialogContent(lines: string[]) {
+  return () =>
+    h(
+      'div',
+      { class: 'flex flex-col gap-8px leading-6' },
+      lines.map((line, index) => h('div', { key: `${line}-${index}` }, line))
+    );
+}
+
+function showDeleteUnavailableDialog(row: Api.Admin.RawRecord) {
+  const channelName = pickValue(row, ['channelName', 'name'], '当前渠道');
+
+  window.$dialog?.warning({
+    title: `暂不能删除渠道：${channelName}`,
+    content: renderDialogContent([
+      '新的 api.json 当前只提供了渠道新增、查询和更新接口，还没有提供渠道删除接口。',
+      '渠道真正删除时，必须由后端一并级联清理渠道充值记录、余额账户、商品授权、价格策略、限额策略、拆单策略、API 凭证、回调配置，以及受影响的订单关系。',
+      '为避免前端误删或出现数据残留，当前页面先只给出风险提示，不执行假删除。'
+    ]),
+    positiveText: '我知道了'
+  });
+}
+
 const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
   {
     key: 'channelCode',
@@ -124,7 +147,7 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
     render: row => {
       const channelId = getEntityId(row, ['channelId', 'id', 'channelCode']);
 
-      return h(NSpace, { size: 8 }, () => [
+      return h(NSpace, { size: 8, wrap: true }, () => [
         h(
           NButton,
           {
@@ -133,7 +156,7 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
             ghost: true,
             onClick: () => router.push(`/channels/detail/${channelId}`)
           },
-          { default: () => '详情' }
+          { default: () => '编辑' }
         ),
         h(
           NButton,
@@ -147,6 +170,16 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
               })
           },
           { default: () => '充值' }
+        ),
+        h(
+          NButton,
+          {
+            size: 'small',
+            type: 'error',
+            ghost: true,
+            onClick: () => showDeleteUnavailableDialog(row)
+          },
+          { default: () => '删除' }
         ),
         h(
           NButton,
@@ -356,10 +389,9 @@ async function submitCreate() {
         supportsConsumptionLog: toBoolean(formModel.supportsConsumptionLog)
       }) as Api.Admin.CreateChannelPayload
     );
-    const createdChannel = buildCreatedChannelRecord(result);
 
     window.$message?.success('渠道创建成功');
-    prependCreatedChannel(createdChannel);
+    prependCreatedChannel(buildCreatedChannelRecord(result));
     createVisible.value = false;
     queryModel.keyword = '';
     queryModel.status = '';
