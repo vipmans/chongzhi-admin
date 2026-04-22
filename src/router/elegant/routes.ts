@@ -9,7 +9,7 @@ export const generatedRoutes: GeneratedRoute[] = [
   {
     name: '403',
     path: '/403',
-    component: 'layout.blank$view.403',
+    component: 'layout.base$view.403',
     meta: {
       title: '403',
       i18nKey: 'route.403',
@@ -20,7 +20,7 @@ export const generatedRoutes: GeneratedRoute[] = [
   {
     name: '404',
     path: '/404',
-    component: 'layout.blank$view.404',
+    component: 'layout.base$view.404',
     meta: {
       title: '404',
       i18nKey: 'route.404',
@@ -31,7 +31,7 @@ export const generatedRoutes: GeneratedRoute[] = [
   {
     name: '500',
     path: '/500',
-    component: 'layout.blank$view.500',
+    component: 'layout.base$view.500',
     meta: {
       title: '500',
       i18nKey: 'route.500',
@@ -55,8 +55,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         component: 'view.access_roles',
         meta: {
           title: '角色管理',
-          order: 2,
-          roles: ['SUPER_ADMIN', 'R_SUPER']
+          order: 2
         }
       },
       {
@@ -65,8 +64,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         component: 'view.access_users',
         meta: {
           title: '后台用户',
-          order: 1,
-          roles: ['SUPER_ADMIN', 'R_SUPER']
+          order: 1
         }
       }
     ]
@@ -88,8 +86,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         meta: {
           title: '渠道详情',
           hideInMenu: true,
-          activeMenu: 'channels_list',
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS', 'FINANCE']
+          activeMenu: 'channels_list'
         }
       },
       {
@@ -98,8 +95,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         component: 'view.channels_list',
         meta: {
           title: '渠道列表',
-          order: 1,
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS']
+          order: 1
         }
       },
       {
@@ -108,8 +104,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         component: 'view.channels_recharge',
         meta: {
           title: '渠道充值',
-          order: 2,
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'FINANCE']
+          order: 2
         }
       }
     ]
@@ -130,8 +125,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         component: 'view.finance_accounts',
         meta: {
           title: '账户信息',
-          order: 1,
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'FINANCE']
+          order: 1
         }
       },
       {
@@ -140,8 +134,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         component: 'view.finance_ledger',
         meta: {
           title: '账务流水',
-          order: 2,
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'FINANCE']
+          order: 2
         }
       }
     ]
@@ -168,7 +161,7 @@ export const generatedRoutes: GeneratedRoute[] = [
   {
     name: 'login',
     path: '/login/:module(pwd-login)?',
-    component: 'layout.blank$view.login',
+    component: 'layout.base$view.login',
     props: true,
     meta: {
       title: '登录',
@@ -193,8 +186,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         component: 'view.notifications_dead-letters',
         meta: {
           title: '通知死信',
-          order: 2,
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS', 'SUPPORT']
+          order: 2
         }
       },
       {
@@ -204,8 +196,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         meta: {
           title: '通知详情',
           hideInMenu: true,
-          activeMenu: 'notifications_tasks',
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS', 'SUPPORT']
+          activeMenu: 'notifications_tasks'
         }
       },
       {
@@ -214,8 +205,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         component: 'view.notifications_tasks',
         meta: {
           title: '通知任务',
-          order: 1,
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS', 'SUPPORT']
+          order: 1
         }
       }
     ]
@@ -225,7 +215,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     path: '/ops',
     component: 'layout.base',
     meta: {
-      title: '杩愯惀瀹¤',
+      title: '运营审计',
       icon: 'mdi:clipboard-text-search-outline',
       order: 8.5
     },
@@ -235,9 +225,8 @@ export const generatedRoutes: GeneratedRoute[] = [
         path: '/ops/audit-logs',
         component: 'view.ops_audit-logs',
         meta: {
-          title: '鎿嶄綔瀹¤',
-          order: 2,
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS']
+          title: '操作审计',
+          order: 2
         }
       },
       {
@@ -245,9 +234,8 @@ export const generatedRoutes: GeneratedRoute[] = [
         path: '/ops/jobs',
         component: 'view.ops_jobs',
         meta: {
-          title: '寮傛浠诲姟',
-          order: 1,
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS']
+          title: '异步任务',
+          order: 1
         }
       },
       {
@@ -255,9 +243,8 @@ export const generatedRoutes: GeneratedRoute[] = [
         path: '/ops/login-logs',
         component: 'view.ops_login-logs',
         meta: {
-          title: '鐧诲綍鏃ュ織',
-          order: 3,
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS']
+          title: '登录日志',
+          order: 3
         }
       }
     ]
@@ -279,8 +266,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         meta: {
           title: '订单详情',
           hideInMenu: true,
-          activeMenu: 'orders_list',
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS', 'SUPPORT']
+          activeMenu: 'orders_list'
         }
       },
       {
@@ -289,8 +275,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         component: 'view.orders_list',
         meta: {
           title: '订单列表',
-          order: 1,
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS', 'SUPPORT']
+          order: 1
         }
       }
     ]
@@ -310,10 +295,9 @@ export const generatedRoutes: GeneratedRoute[] = [
         path: '/products/detail/:id',
         component: 'view.products_detail',
         meta: {
-          title: '鍟嗗搧璇︽儏',
+          title: '商品详情',
           hideInMenu: true,
-          activeMenu: 'products_list',
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS']
+          activeMenu: 'products_list'
         }
       },
       {
@@ -322,8 +306,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         component: 'view.products_list',
         meta: {
           title: '平台商品',
-          order: 1,
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS']
+          order: 1
         }
       }
     ]
@@ -344,8 +327,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         component: 'view.risk_decisions',
         meta: {
           title: '风控决策',
-          order: 3,
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'RISK']
+          order: 3
         }
       },
       {
@@ -354,8 +336,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         component: 'view.risk_lists',
         meta: {
           title: '黑白名单',
-          order: 2,
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'RISK']
+          order: 2
         }
       },
       {
@@ -364,8 +345,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         component: 'view.risk_rules',
         meta: {
           title: '风控规则',
-          order: 1,
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'RISK']
+          order: 1
         }
       }
     ]
@@ -387,8 +367,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         meta: {
           title: '供应商详情',
           hideInMenu: true,
-          activeMenu: 'suppliers_list',
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS']
+          activeMenu: 'suppliers_list'
         }
       },
       {
@@ -397,8 +376,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         component: 'view.suppliers_list',
         meta: {
           title: '供应商列表',
-          order: 1,
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS']
+          order: 1
         }
       }
     ]

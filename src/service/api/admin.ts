@@ -44,6 +44,12 @@ export function createAdminRole(data: Api.Admin.CreateRolePayload) {
   });
 }
 
+export function fetchAdminRoleDetail(roleId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/roles/${roleId}`
+  });
+}
+
 export function fetchChannels(params?: Api.Admin.ChannelListQuery) {
   return request<Api.Admin.PagedResponse<Api.Admin.RawRecord>>({
     url: '/admin/channels',

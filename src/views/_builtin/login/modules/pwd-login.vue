@@ -44,7 +44,7 @@ async function handleSubmit() {
         登录后台
       </NButton>
       <NAlert type="info" :show-icon="false">
-        使用后端服务里的管理员账号登录。本系统仅提供后台登录，不提供注册、验证码登录或找回密码。
+        当前前端仅提供后台管理员密码登录。根据现有 api.json，暂不支持忘记密码、验证码登录或前端自助找回密码流程。
       </NAlert>
     </NSpace>
   </NForm>
