@@ -15,6 +15,8 @@ declare namespace Api {
     type RawList = RawRecord[];
 
     type SortOrder = 'asc' | 'desc';
+    type DataScope = 'ALL' | 'SELF_CREATED' | 'SELF_ASSIGNED';
+    type UserStatus = 'ACTIVE' | 'DISABLED';
 
     interface PagedQuery {
       pageNum?: number;
@@ -125,13 +127,19 @@ declare namespace Api {
     interface CreateUserPayload {
       username: string;
       password: string;
-      displayName: string;
+      roleCode: string;
+      displayName?: string;
       email?: string;
-      mobile?: string;
+      mobile1?: string;
       mobile2?: string;
       wechat?: string;
       qq?: string;
       remark?: string;
+      status?: UserStatus;
+    }
+
+    interface UpdateUserStatusPayload {
+      status: UserStatus;
     }
 
     interface AssignUserRolePayload {
@@ -141,6 +149,22 @@ declare namespace Api {
     interface CreateRolePayload {
       roleCode: string;
       roleName: string;
+      permissionCodes?: string[];
+      menuCodes?: string[];
+      dataScope?: DataScope;
+    }
+
+    interface OpenChannelPortalAccountPayload {
+      portalAccount: string;
+      password: string;
+    }
+
+    interface RejectChannelPortalAccountPayload {
+      reason: string;
+    }
+
+    interface ResetChannelPortalPasswordPayload {
+      password: string;
     }
 
     interface SaveSupplierPayload {

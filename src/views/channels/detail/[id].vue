@@ -4,13 +4,20 @@ import { useRoute } from 'vue-router';
 import { NButton, NTag } from 'naive-ui';
 import type { DataTableColumns, FormInst, SelectOption } from 'naive-ui';
 import {
+  approveChannelPortalAccount,
   createChannelApiKey,
+  disableChannelPortalAccount,
+  enableChannelPortalAccount,
   fetchChannelApiKeys,
   fetchChannelCallbackConfig,
   fetchChannelDetail,
   fetchChannelOrderPolicy,
+  fetchChannelPortalAccount,
   fetchProducts,
+  openChannelPortalAccount,
   rechargeChannel,
+  rejectChannelPortalAccount,
+  resetChannelPortalPassword,
   saveChannelCallbackConfig,
   saveChannelLimit,
   saveChannelPrice,
@@ -40,6 +47,7 @@ const channel = ref<Api.Admin.RawRecord>({});
 const apiKeys = ref<Api.Admin.RawRecord[]>([]);
 const callbackConfig = ref<Api.Admin.RawRecord>({});
 const orderPolicy = ref<Api.Admin.RawRecord>({});
+const portalAccount = ref<Api.Admin.RawRecord>({});
 const products = ref<Api.Admin.RawRecord[]>([]);
 
 const apiKeyFormRef = ref<FormInst | null>(null);
@@ -48,6 +56,9 @@ const productFormRef = ref<FormInst | null>(null);
 const priceFormRef = ref<FormInst | null>(null);
 const limitFormRef = ref<FormInst | null>(null);
 const rechargeFormRef = ref<FormInst | null>(null);
+const portalOpenFormRef = ref<FormInst | null>(null);
+const portalRejectFormRef = ref<FormInst | null>(null);
+const portalResetFormRef = ref<FormInst | null>(null);
 
 const apiKeyForm = reactive<Api.Admin.CreateChannelApiKeyPayload>({
   channelId: '',
@@ -86,6 +97,19 @@ const rechargeForm = reactive<Api.Admin.RechargeChannelPayload>({
   remark: ''
 });
 
+const portalOpenForm = reactive<Api.Admin.OpenChannelPortalAccountPayload>({
+  portalAccount: '',
+  password: ''
+});
+
+const portalRejectForm = reactive<Api.Admin.RejectChannelPortalAccountPayload>({
+  reason: ''
+});
+
+const portalResetForm = reactive<Api.Admin.ResetChannelPortalPasswordPayload>({
+  password: ''
+});
+
 const productOptions = computed<SelectOption[]>(() =>
   products.value.map(item => ({
     label: `${pickValue(item, ['productName'])} (${pickValue(item, ['productCode'])})`,
@@ -102,6 +126,25 @@ const authorizedProducts = computed(() =>
   products.value.filter(item => authorizedProductIds.value.includes(getEntityId(item, ['productId', 'id'])))
 );
 
+const portalStatus = computed(() => pickValue(portalAccount.value, ['portalStatus'], '-'));
+const portalTagType = computed(() => {
+  const status = portalStatus.value;
+
+  if (['APPROVED', 'ACTIVE', 'ENABLED'].includes(status)) {
+    return 'success';
+  }
+
+  if (['PENDING', 'WAITING_APPROVAL'].includes(status)) {
+    return 'warning';
+  }
+
+  if (['REJECTED', 'DISABLED'].includes(status)) {
+    return 'error';
+  }
+
+  return 'default';
+});
+
 const priceColumns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
   {
     key: 'productId',
@@ -115,7 +158,7 @@ const priceColumns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
   {
     key: 'saleAmountFen',
     title: '渠道供货价',
-    render: row => formatAmountFen(row.saleAmountFen)
+    render: row => formatAmountFen(row.saleAmountFen ?? row.salePriceFen ?? row.saleAmount ?? row.salePrice)
   },
   {
     key: 'currency',
@@ -155,7 +198,7 @@ const apiKeyRules: Record<string, App.Global.FormRule[]> = {
 
 const callbackRules: Record<string, App.Global.FormRule[]> = {
   callbackUrl: [{ required: true, message: '请输入回调地址', trigger: 'blur' }],
-  signSecret: [{ required: true, message: '请输入回调密钥', trigger: 'blur' }]
+  signSecret: [{ required: true, message: '请输入回调签名密钥', trigger: 'blur' }]
 };
 
 const productRules: Record<string, App.Global.FormRule[]> = {
@@ -177,6 +220,25 @@ const limitRules: Record<string, App.Global.FormRule[]> = {
 const rechargeRules: Record<string, App.Global.FormRule[]> = {
   amount: [{ required: true, type: 'number', message: '请输入充值金额', trigger: 'blur' }],
   remark: [{ required: true, message: '请输入充值备注', trigger: 'blur' }]
+};
+
+const portalOpenRules: Record<string, App.Global.FormRule[]> = {
+  portalAccount: [{ required: true, message: '请输入门户账号', trigger: 'blur' }],
+  password: [
+    { required: true, message: '请输入初始密码', trigger: 'blur' },
+    { min: 6, message: '密码至少 6 位', trigger: 'blur' }
+  ]
+};
+
+const portalRejectRules: Record<string, App.Global.FormRule[]> = {
+  reason: [{ required: true, message: '请输入驳回原因', trigger: 'blur' }]
+};
+
+const portalResetRules: Record<string, App.Global.FormRule[]> = {
+  password: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, message: '密码至少 6 位', trigger: 'blur' }
+  ]
 };
 
 function openRaw(title: string, value: unknown) {
@@ -207,12 +269,13 @@ async function loadPage() {
   loading.value = true;
 
   try {
-    const [channelData, apiKeyData, callbackData, policyData, productData] = await Promise.all([
+    const [channelData, apiKeyData, callbackData, policyData, productData, portalData] = await Promise.all([
       fetchChannelDetail(channelId.value),
       fetchChannelApiKeys(channelId.value),
       fetchChannelCallbackConfig(channelId.value),
       fetchChannelOrderPolicy(channelId.value),
-      fetchProducts({ pageNum: 1, pageSize: 200 })
+      fetchProducts({ pageNum: 1, pageSize: 200 }),
+      fetchChannelPortalAccount(channelId.value)
     ]);
 
     channel.value = extractObjectData(channelData);
@@ -220,6 +283,7 @@ async function loadPage() {
     callbackConfig.value = extractObjectData(callbackData);
     orderPolicy.value = extractObjectData(policyData);
     products.value = extractPagedData(productData).records;
+    portalAccount.value = extractObjectData(portalData);
 
     syncForms();
   } finally {
@@ -334,6 +398,92 @@ async function handleRecharge() {
   }
 }
 
+async function handleOpenPortalAccount() {
+  await portalOpenFormRef.value?.validate();
+  saving.value = true;
+
+  try {
+    await openChannelPortalAccount(channelId.value, {
+      portalAccount: portalOpenForm.portalAccount.trim(),
+      password: portalOpenForm.password
+    });
+    window.$message?.success('渠道门户账号已开通，当前状态为待审核');
+    portalOpenForm.portalAccount = '';
+    portalOpenForm.password = '';
+    await loadPage();
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function handleApprovePortalAccount() {
+  saving.value = true;
+
+  try {
+    await approveChannelPortalAccount(channelId.value);
+    window.$message?.success('渠道门户账号已审核通过');
+    await loadPage();
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function handleRejectPortalAccount() {
+  await portalRejectFormRef.value?.validate();
+  saving.value = true;
+
+  try {
+    await rejectChannelPortalAccount(channelId.value, {
+      reason: portalRejectForm.reason.trim()
+    });
+    window.$message?.success('渠道门户账号已驳回');
+    portalRejectForm.reason = '';
+    await loadPage();
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function handleResetPortalPassword() {
+  await portalResetFormRef.value?.validate();
+  saving.value = true;
+
+  try {
+    await resetChannelPortalPassword(channelId.value, {
+      password: portalResetForm.password
+    });
+    window.$message?.success('渠道门户密码已重置');
+    portalResetForm.password = '';
+    await loadPage();
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function handleDisablePortalAccount() {
+  saving.value = true;
+
+  try {
+    await disableChannelPortalAccount(channelId.value);
+    window.$message?.success('渠道门户账号已禁用');
+    await loadPage();
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function handleEnablePortalAccount() {
+  saving.value = true;
+
+  try {
+    await enableChannelPortalAccount(channelId.value);
+    window.$message?.success('渠道门户账号已启用');
+    await loadPage();
+  } finally {
+    saving.value = false;
+  }
+}
+
 onMounted(() => {
   loadPage();
 });
@@ -357,7 +507,7 @@ onMounted(() => {
     </NCard>
 
     <NAlert type="info" :show-icon="false">
-      新版 API 不支持前端直接修改渠道主体基础信息，因此详情页以读取主体档案为主，重点提供凭证、回调、商品授权、渠道供货价、限额和充值配置能力。
+      当前页面已按新 `api.json` 对齐，除渠道凭证、回调、商品授权、供货价、限额与充值外，还新增支持渠道门户账号开通与审核流转。
     </NAlert>
 
     <NGrid cols="1 l:3" responsive="screen" :x-gap="16" :y-gap="16">
@@ -378,21 +528,112 @@ onMounted(() => {
           <NSpace vertical :size="10">
             <div class="text-14px">已授权商品数：{{ authorizedProductIds.length }}</div>
             <div class="text-14px">价格策略数：{{ priceRows.length }}</div>
-            <div class="text-14px">
-              回调地址：
-              <span class="break-all">{{ pickValue(callbackConfig, ['callbackUrl']) }}</span>
-            </div>
+            <div class="text-14px">回调地址：<span class="break-all">{{ pickValue(callbackConfig, ['callbackUrl']) }}</span></div>
             <div class="text-14px">回调超时：{{ pickValue(callbackConfig, ['timeoutSeconds']) }} 秒</div>
-            <NTag type="info" round>渠道供货价由 `channel-prices` 接口单独配置</NTag>
+            <div class="text-14px">
+              门户账号状态：
+              <NTag size="small" :type="portalTagType">{{ portalStatus }}</NTag>
+            </div>
           </NSpace>
         </NCard>
       </NGi>
       <NGi>
-        <RawJsonCard title="渠道详情原始 JSON" :value="channel" />
+        <NCard title="渠道原始 JSON" :bordered="false" class="card-wrapper">
+          <NCode :code="toPrettyJson(channel)" language="json" word-wrap />
+        </NCard>
       </NGi>
     </NGrid>
 
     <NTabs type="line" animated>
+      <NTabPane name="portal" tab="门户账号">
+        <NGrid cols="1 l:2" responsive="screen" :x-gap="16" :y-gap="16">
+          <NGi>
+            <NSpace vertical :size="16">
+              <NCard title="账号状态" :bordered="false" class="card-wrapper">
+                <NDescriptions bordered :column="1" label-placement="left">
+                  <NDescriptionsItem label="渠道ID">{{ pickValue(portalAccount, ['channelId'], channelId) }}</NDescriptionsItem>
+                  <NDescriptionsItem label="门户账号">{{ pickValue(portalAccount, ['portalAccount']) }}</NDescriptionsItem>
+                  <NDescriptionsItem label="门户状态">
+                    <NTag size="small" :type="portalTagType">{{ portalStatus }}</NTag>
+                  </NDescriptionsItem>
+                  <NDescriptionsItem label="开通时间">{{ pickValue(portalAccount, ['portalOpenedAt']) }}</NDescriptionsItem>
+                  <NDescriptionsItem label="审核通过时间">{{ pickValue(portalAccount, ['portalApprovedAt']) }}</NDescriptionsItem>
+                  <NDescriptionsItem label="最近登录时间">{{ pickValue(portalAccount, ['lastLoginAt']) }}</NDescriptionsItem>
+                  <NDescriptionsItem label="驳回原因">{{ pickValue(portalAccount, ['portalRejectReason']) }}</NDescriptionsItem>
+                  <NDescriptionsItem label="渠道状态">{{ pickValue(portalAccount, ['channelStatus']) }}</NDescriptionsItem>
+                </NDescriptions>
+
+                <div class="mt-16px flex flex-wrap gap-12px">
+                  <NButton type="primary" :loading="saving" @click="handleApprovePortalAccount">审核通过</NButton>
+                  <NButton type="warning" :loading="saving" @click="handleDisablePortalAccount">禁用账号</NButton>
+                  <NButton type="success" :loading="saving" @click="handleEnablePortalAccount">启用账号</NButton>
+                </div>
+              </NCard>
+
+              <NCard title="开通门户账号" :bordered="false" class="card-wrapper">
+                <NForm
+                  ref="portalOpenFormRef"
+                  :model="portalOpenForm"
+                  :rules="portalOpenRules"
+                  label-placement="left"
+                  label-width="108"
+                >
+                  <NFormItem label="门户账号" path="portalAccount">
+                    <NInput v-model:value="portalOpenForm.portalAccount" />
+                  </NFormItem>
+                  <NFormItem label="初始密码" path="password">
+                    <NInput v-model:value="portalOpenForm.password" type="password" show-password-on="click" />
+                  </NFormItem>
+                  <NButton type="primary" :loading="saving" @click="handleOpenPortalAccount">开通账号</NButton>
+                </NForm>
+              </NCard>
+            </NSpace>
+          </NGi>
+
+          <NGi>
+            <NSpace vertical :size="16">
+              <NCard title="驳回开户申请" :bordered="false" class="card-wrapper">
+                <NForm
+                  ref="portalRejectFormRef"
+                  :model="portalRejectForm"
+                  :rules="portalRejectRules"
+                  label-placement="left"
+                  label-width="108"
+                >
+                  <NFormItem label="驳回原因" path="reason">
+                    <NInput
+                      v-model:value="portalRejectForm.reason"
+                      type="textarea"
+                      :autosize="{ minRows: 4, maxRows: 6 }"
+                    />
+                  </NFormItem>
+                  <NButton type="warning" :loading="saving" @click="handleRejectPortalAccount">提交驳回</NButton>
+                </NForm>
+              </NCard>
+
+              <NCard title="重置门户密码" :bordered="false" class="card-wrapper">
+                <NForm
+                  ref="portalResetFormRef"
+                  :model="portalResetForm"
+                  :rules="portalResetRules"
+                  label-placement="left"
+                  label-width="108"
+                >
+                  <NFormItem label="新密码" path="password">
+                    <NInput v-model:value="portalResetForm.password" type="password" show-password-on="click" />
+                  </NFormItem>
+                  <NButton type="primary" :loading="saving" @click="handleResetPortalPassword">重置密码</NButton>
+                </NForm>
+              </NCard>
+
+              <NCard title="门户账号原始 JSON" :bordered="false" class="card-wrapper">
+                <NCode :code="toPrettyJson(portalAccount)" language="json" word-wrap />
+              </NCard>
+            </NSpace>
+          </NGi>
+        </NGrid>
+      </NTabPane>
+
       <NTabPane name="credential" tab="凭证与回调">
         <NGrid cols="1 l:2" responsive="screen" :x-gap="16" :y-gap="16">
           <NGi>
@@ -450,9 +691,7 @@ onMounted(() => {
                 <NButton type="primary" :loading="saving" @click="handleSaveCallback">保存回调配置</NButton>
               </NForm>
 
-              <div class="mt-16px">
-                <RawJsonCard title="回调配置原始 JSON" :value="callbackConfig" />
-              </div>
+              <NCode class="mt-16px" :code="toPrettyJson(callbackConfig)" language="json" word-wrap />
             </NCard>
           </NGi>
         </NGrid>
@@ -498,7 +737,7 @@ onMounted(() => {
                     <NInputNumber v-model:value="priceForm.salePrice" :min="0" class="w-full" />
                   </NFormItem>
                   <NAlert type="info" :show-icon="false" class="mb-12px">
-                    这里配置的是渠道侧供货价，例如 100 元话费可给不同渠道分别配置 10100、10050 等价格。
+                    这里配置的是该渠道的供货价，可用于区分不同渠道的销售价格策略。
                   </NAlert>
                   <NButton type="primary" :loading="saving" @click="handleSavePrice">保存供货价</NButton>
                 </NForm>
@@ -565,9 +804,6 @@ onMounted(() => {
                       :autosize="{ minRows: 4, maxRows: 6 }"
                     />
                   </NFormItem>
-                  <NAlert type="info" :show-icon="false" class="mb-12px">
-                    渠道充值接口只返回操作结果，不返回余额快照；首次充值时后端会自动初始化渠道账务账户。
-                  </NAlert>
                   <NButton type="primary" :loading="saving" @click="handleRecharge">提交充值</NButton>
                 </NForm>
               </NCard>
@@ -576,8 +812,12 @@ onMounted(() => {
 
           <NGi>
             <NSpace vertical :size="16">
-              <RawJsonCard title="下单策略原始 JSON" :value="orderPolicy" />
-              <RawJsonCard title="限额规则原始 JSON" :value="orderPolicy.limitRule ?? {}" />
+              <NCard title="下单策略原始 JSON" :bordered="false" class="card-wrapper">
+                <NCode :code="toPrettyJson(orderPolicy)" language="json" word-wrap />
+              </NCard>
+              <NCard title="限额规则原始 JSON" :bordered="false" class="card-wrapper">
+                <NCode :code="toPrettyJson(orderPolicy.limitRule ?? {})" language="json" word-wrap />
+              </NCard>
             </NSpace>
           </NGi>
         </NGrid>

@@ -2,6 +2,7 @@ import type { RouteLocationNormalizedLoaded, RouteRecordRaw, _RouteRecordBase } 
 import type { ElegantConstRoute, LastLevelRouteKey, RouteKey, RouteMap } from '@elegant-router/types';
 import { useSvgIcon } from '@/hooks/common/icon';
 import { $t } from '@/locales';
+import { hasAnyRole } from '@/constants/auth';
 
 /**
  * Filter auth routes by roles
@@ -30,7 +31,7 @@ function filterAuthRouteByRoles(route: ElegantConstRoute, roles: string[]): Eleg
   const isEmptyRoles = !routeRoles.length;
 
   // if the user's role is included in the route's "roles", then it is allowed to access
-  const hasPermission = routeRoles.some(role => roles.includes(role));
+  const hasPermission = hasAnyRole(roles, routeRoles);
 
   const filterRoute = { ...route };
 

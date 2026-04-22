@@ -5,9 +5,9 @@ import { NButton, NTag } from 'naive-ui';
 import type { DataTableColumns, FormInst } from 'naive-ui';
 import {
   fetchSupplierBalance,
+  fetchSupplierDetail,
   fetchSupplierReconcileDiffs,
   fetchSupplierSyncLogs,
-  fetchSuppliers,
   recoverSupplierCircuitBreaker,
   saveSupplierConfig,
   triggerSupplierCatalogSync
@@ -166,17 +166,6 @@ function openRaw(title: string, value: unknown) {
   rawVisible.value = true;
 }
 
-function resolveSupplierFromList(data: unknown) {
-  const records = Array.isArray(data) ? extractListData(data) : extractPagedData(data).records;
-  const matched = records.find(item => {
-    const currentId = getEntityId(item, ['supplierId', 'id']);
-    const supplierCode = pickValue(item, ['supplierCode'], '');
-    return currentId === supplierId.value || supplierCode === supplierId.value;
-  });
-
-  supplier.value = matched || records[0] || { id: supplierId.value, supplierId: supplierId.value };
-}
-
 function normalizeReconcileRows(data: unknown) {
   const pageData = Array.isArray(data) ? extractPagedData(data) : extractPagedData(data);
   const currentSupplierCode = pickValue(supplier.value, ['supplierCode'], '');
@@ -202,15 +191,11 @@ async function loadOverview() {
 
   try {
     const [supplierData, balanceData] = await Promise.all([
-      fetchSuppliers({
-        pageNum: 1,
-        pageSize: 200,
-        keyword: supplierId.value
-      }),
+      fetchSupplierDetail(supplierId.value),
       fetchSupplierBalance(supplierId.value)
     ]);
 
-    resolveSupplierFromList(supplierData);
+    supplier.value = extractObjectData(supplierData);
     balance.value = extractObjectData(balanceData);
   } finally {
     loading.value = false;

@@ -1,4 +1,4 @@
-type AdminSubsystemKey = 'access' | 'operations' | 'finance' | 'risk' | 'support';
+type AdminSubsystemKey = 'access' | 'operations' | 'finance' | 'risk' | 'support' | 'customerService';
 
 type AdminSubsystemConfig = {
   key: AdminSubsystemKey;
@@ -10,22 +10,64 @@ const subsystemMap: Record<AdminSubsystemKey, AdminSubsystemConfig> = {
   operations: { key: 'operations', label: '运营平台' },
   finance: { key: 'finance', label: '财务平台' },
   risk: { key: 'risk', label: '风控平台' },
-  support: { key: 'support', label: '支持平台' }
+  support: { key: 'support', label: '技术支持平台' },
+  customerService: { key: 'customerService', label: '平台客服' }
 };
 
-function normalizeRoleCodes(roleCodes: string[]) {
-  return roleCodes.map(code => code.trim().toUpperCase()).filter(Boolean);
+export const SUPPORT_ROLE_CODES = ['SUPPORT'] as const;
+export const CUSTOMER_SERVICE_ROLE_CODES = ['CUSTOMER_SERVICE', 'CUSTOMER_SUPPORT', 'CS'] as const;
+
+function normalizeRoleCode(roleCode?: string | null) {
+  return roleCode?.trim().toUpperCase() || '';
 }
 
-function includesRole(roleCodes: string[], expected: string[]) {
-  const normalizedRoleCodes = normalizeRoleCodes(roleCodes);
-  const expectedCodes = expected.map(code => code.trim().toUpperCase());
+function getRoleAliasGroups() {
+  return [
+    ['SUPER_ADMIN', 'R_SUPER', normalizeRoleCode(import.meta.env.VITE_STATIC_SUPER_ROLE)].filter(Boolean),
+    ['OPS'],
+    ['FINANCE'],
+    ['RISK'],
+    [...SUPPORT_ROLE_CODES],
+    [...CUSTOMER_SERVICE_ROLE_CODES]
+  ];
+}
 
-  return normalizedRoleCodes.some(code => expectedCodes.includes(code));
+function getRoleAliasGroup(roleCode: string) {
+  const normalizedRoleCode = normalizeRoleCode(roleCode);
+
+  if (!normalizedRoleCode) {
+    return [];
+  }
+
+  const matchedGroup = getRoleAliasGroups().find(group => group.includes(normalizedRoleCode));
+
+  return matchedGroup || [normalizedRoleCode];
+}
+
+export function normalizeRoleCodes(roleCodes: string[]) {
+  return Array.from(new Set(roleCodes.map(code => normalizeRoleCode(code)).filter(Boolean)));
+}
+
+export function hasAnyRole(roleCodes: string[], expected: string[]) {
+  const normalizedRoleCodes = normalizeRoleCodes(roleCodes);
+  const normalizedExpected = normalizeRoleCodes(expected);
+
+  return normalizedExpected.some(expectedCode => {
+    const acceptedCodes = getRoleAliasGroup(expectedCode);
+    return normalizedRoleCodes.some(roleCode => acceptedCodes.includes(roleCode));
+  });
 }
 
 export function isSuperRole(roleCodes: string[]) {
-  return includesRole(roleCodes, ['SUPER_ADMIN', import.meta.env.VITE_STATIC_SUPER_ROLE]);
+  return hasAnyRole(roleCodes, ['SUPER_ADMIN']);
+}
+
+export function isSupportRole(roleCodes: string[]) {
+  return hasAnyRole(roleCodes, [...SUPPORT_ROLE_CODES]);
+}
+
+export function isCustomerServiceRole(roleCodes: string[]) {
+  return hasAnyRole(roleCodes, [...CUSTOMER_SERVICE_ROLE_CODES]);
 }
 
 export function getSubsystemKeysByRoleCodes(roleCodes: string[]) {
@@ -35,20 +77,24 @@ export function getSubsystemKeysByRoleCodes(roleCodes: string[]) {
 
   const subsystemKeys: AdminSubsystemKey[] = [];
 
-  if (includesRole(roleCodes, ['OPS'])) {
+  if (hasAnyRole(roleCodes, ['OPS'])) {
     subsystemKeys.push('operations');
   }
 
-  if (includesRole(roleCodes, ['FINANCE'])) {
+  if (hasAnyRole(roleCodes, ['FINANCE'])) {
     subsystemKeys.push('finance');
   }
 
-  if (includesRole(roleCodes, ['RISK'])) {
+  if (hasAnyRole(roleCodes, ['RISK'])) {
     subsystemKeys.push('risk');
   }
 
-  if (includesRole(roleCodes, ['SUPPORT'])) {
+  if (isSupportRole(roleCodes)) {
     subsystemKeys.push('support');
+  }
+
+  if (isCustomerServiceRole(roleCodes)) {
+    subsystemKeys.push('customerService');
   }
 
   return subsystemKeys;
@@ -69,20 +115,24 @@ export function getDefaultHomeRouteByRoleCodes(roleCodes: string[]): App.Global.
     return 'home';
   }
 
-  if (includesRole(roleCodes, ['OPS'])) {
+  if (hasAnyRole(roleCodes, ['OPS'])) {
     return 'channels_list';
   }
 
-  if (includesRole(roleCodes, ['FINANCE'])) {
+  if (hasAnyRole(roleCodes, ['FINANCE'])) {
     return 'finance_accounts';
   }
 
-  if (includesRole(roleCodes, ['RISK'])) {
+  if (hasAnyRole(roleCodes, ['RISK'])) {
     return 'risk_rules';
   }
 
-  if (includesRole(roleCodes, ['SUPPORT'])) {
+  if (isCustomerServiceRole(roleCodes)) {
     return 'orders_list';
+  }
+
+  if (isSupportRole(roleCodes)) {
+    return 'ops_jobs';
   }
 
   return 'home';

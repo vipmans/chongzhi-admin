@@ -45,7 +45,7 @@ const bgColor = computed(() => {
           </div>
         </header>
         <main class="pt-24px">
-          <h3 class="text-18px text-primary font-medium">管理员登录</h3>
+          <h3 class="text-18px text-primary font-medium">后台管理登录</h3>
           <div class="pt-24px">
             <Transition :name="themeStore.page.animateMode" mode="out-in" appear>
               <PwdLogin />

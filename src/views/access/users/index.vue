@@ -2,27 +2,23 @@
 import { computed, h, onMounted, reactive, ref } from 'vue';
 import { NButton, NSelect, NSpace, NTag } from 'naive-ui';
 import type { DataTableColumns, FormInst, SelectOption } from 'naive-ui';
-import { assignAdminUserRole, createAdminUser, fetchAdminRoles, fetchAdminUsers } from '@/service/api';
+import {
+  assignAdminUserRole,
+  createAdminUser,
+  fetchAdminRoles,
+  fetchAdminUsers,
+  updateAdminUserStatus
+} from '@/service/api';
 import { getSubsystemLabelsByRoleCodes } from '@/constants/auth';
 import { extractPagedData, getEntityId, normalizeQuery, pickValue, toPrettyJson } from '@/utils/admin';
 
-type AdminUserCreateFormModel = {
-  username: string;
-  password: string;
-  roleCode: string;
-  displayName?: string;
-  mobile?: string;
-  mobile2?: string;
-  email?: string;
-  wechat?: string;
-  qq?: string;
-  remark?: string;
-};
+type AdminUserCreateFormModel = Api.Admin.CreateUserPayload;
 
 const loading = ref(false);
 const rolesLoading = ref(false);
 const submitting = ref(false);
 const assigningUserId = ref('');
+const statusChangingUserId = ref('');
 const createVisible = ref(false);
 const rawVisible = ref(false);
 const rawRecord = ref<Api.Admin.RawRecord>({});
@@ -46,17 +42,23 @@ const formModel = reactive<AdminUserCreateFormModel>({
   roleCode: '',
   displayName: '',
   email: '',
-  mobile: '',
+  mobile1: '',
   mobile2: '',
   wechat: '',
   qq: '',
-  remark: ''
+  remark: '',
+  status: 'ACTIVE'
 });
 
 const statusOptions = [
   { label: '全部状态', value: '' },
   { label: 'ACTIVE', value: 'ACTIVE' },
-  { label: 'INACTIVE', value: 'INACTIVE' }
+  { label: 'DISABLED', value: 'DISABLED' }
+];
+
+const createStatusOptions = [
+  { label: 'ACTIVE', value: 'ACTIVE' },
+  { label: 'DISABLED', value: 'DISABLED' }
 ];
 
 const roleOptions = computed<SelectOption[]>(
@@ -90,7 +92,7 @@ function getRoleCodes(row: Api.Admin.RawRecord) {
 }
 
 function getPrimaryRoleCode(row: Api.Admin.RawRecord) {
-  return getRoleCodes(row)[0] || '';
+  return pickValue(row, ['primaryRoleCode'], '') || getRoleCodes(row)[0] || '';
 }
 
 function syncRoleDrafts() {
@@ -119,6 +121,7 @@ function updateRowRole(userId: string, roleCode: string) {
 
     return {
       ...row,
+      primaryRoleCode: roleCode,
       roleCodes: roleCode ? [roleCode] : [],
       roleCode
     };
@@ -128,6 +131,21 @@ function updateRowRole(userId: string, roleCode: string) {
     ...roleDraftMap.value,
     [userId]: roleCode
   };
+}
+
+function updateRowStatus(userId: string, status: Api.Admin.UserStatus) {
+  rows.value = rows.value.map(row => {
+    const currentUserId = getEntityId(row, ['userId', 'id']);
+
+    if (currentUserId !== userId) {
+      return row;
+    }
+
+    return {
+      ...row,
+      status
+    };
+  });
 }
 
 const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
@@ -168,9 +186,24 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
     }
   },
   {
+    key: 'permissionCodes',
+    title: '权限码数',
+    render: row => String(Array.isArray(row.permissionCodes) ? row.permissionCodes.length : 0)
+  },
+  {
+    key: 'menuCodes',
+    title: '菜单码数',
+    render: row => String(Array.isArray(row.menuCodes) ? row.menuCodes.length : 0)
+  },
+  {
+    key: 'dataScope',
+    title: '数据范围',
+    render: row => pickValue(row, ['dataScope'])
+  },
+  {
     key: 'mobile',
-    title: '手机号1',
-    render: row => pickValue(row, ['mobile'])
+    title: '手机号',
+    render: row => pickValue(row, ['mobile1', 'mobile'])
   },
   {
     key: 'email',
@@ -180,7 +213,12 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
   {
     key: 'status',
     title: '状态',
-    render: row => pickValue(row, ['status', 'userStatus'])
+    render: row => {
+      const status = pickValue(row, ['status'], '-');
+      const type = status === 'ACTIVE' ? 'success' : status === 'DISABLED' ? 'warning' : 'default';
+
+      return h(NTag, { size: 'small', type }, { default: () => status });
+    }
   },
   {
     key: 'createdAt',
@@ -226,6 +264,29 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
     }
   },
   {
+    key: 'userStatusAction',
+    title: '账号状态',
+    width: 150,
+    render: row => {
+      const userId = getEntityId(row, ['userId', 'id']);
+      const currentStatus = pickValue(row, ['status'], 'ACTIVE') as Api.Admin.UserStatus;
+      const nextStatus: Api.Admin.UserStatus = currentStatus === 'ACTIVE' ? 'DISABLED' : 'ACTIVE';
+      const label = currentStatus === 'ACTIVE' ? '禁用账号' : '启用账号';
+
+      return h(
+        NButton,
+        {
+          size: 'small',
+          secondary: true,
+          type: currentStatus === 'ACTIVE' ? 'warning' : 'success',
+          loading: statusChangingUserId.value === userId,
+          onClick: () => handleChangeStatus(userId, nextStatus)
+        },
+        { default: () => label }
+      );
+    }
+  },
+  {
     key: 'actions',
     title: '操作',
     render: row =>
@@ -236,7 +297,7 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
           quaternary: true,
           onClick: () => openRaw(row)
         },
-        { default: () => '查看原始' }
+        { default: () => '查看原始数据' }
       )
   }
 ]);
@@ -260,11 +321,12 @@ function resetForm() {
   formModel.roleCode = '';
   formModel.displayName = '';
   formModel.email = '';
-  formModel.mobile = '';
+  formModel.mobile1 = '';
   formModel.mobile2 = '';
   formModel.wechat = '';
   formModel.qq = '';
   formModel.remark = '';
+  formModel.status = 'ACTIVE';
 }
 
 function openCreate() {
@@ -287,15 +349,20 @@ function buildCreatedUserRecord(userId: string) {
     userId,
     username,
     displayName,
+    primaryRoleCode: formModel.roleCode,
     roleCodes: formModel.roleCode ? [formModel.roleCode] : [],
     roleCode: formModel.roleCode || null,
+    permissionCodes: [],
+    menuCodes: [],
+    dataScope: null,
     email: formModel.email?.trim() || null,
-    mobile: formModel.mobile?.trim() || null,
+    mobile: formModel.mobile1?.trim() || null,
+    mobile1: formModel.mobile1?.trim() || null,
     mobile2: formModel.mobile2?.trim() || null,
     wechat: formModel.wechat?.trim() || null,
     qq: formModel.qq?.trim() || null,
     remark: formModel.remark?.trim() || null,
-    status: 'ACTIVE',
+    status: formModel.status || 'ACTIVE',
     lastLoginAt: null,
     createdAt: now,
     updatedAt: now
@@ -416,36 +483,38 @@ async function handleAssignRole(row: Api.Admin.RawRecord) {
   }
 }
 
+async function handleChangeStatus(userId: string, status: Api.Admin.UserStatus) {
+  statusChangingUserId.value = userId;
+
+  try {
+    await updateAdminUserStatus(userId, { status });
+    updateRowStatus(userId, status);
+    window.$message?.success(`账号状态已更新为 ${status}`);
+  } finally {
+    statusChangingUserId.value = '';
+  }
+}
+
 async function submitCreate() {
   await formRef.value?.validate();
   submitting.value = true;
 
   try {
-    const displayName = formModel.displayName?.trim() || formModel.username.trim();
     const createResult = await createAdminUser({
       username: formModel.username.trim(),
       password: formModel.password,
-      displayName,
+      roleCode: formModel.roleCode,
+      displayName: formModel.displayName?.trim() || undefined,
       email: formModel.email?.trim() || undefined,
-      mobile: formModel.mobile?.trim() || undefined,
+      mobile1: formModel.mobile1?.trim() || undefined,
       mobile2: formModel.mobile2?.trim() || undefined,
       wechat: formModel.wechat?.trim() || undefined,
       qq: formModel.qq?.trim() || undefined,
-      remark: formModel.remark?.trim() || undefined
+      remark: formModel.remark?.trim() || undefined,
+      status: formModel.status || 'ACTIVE'
     });
 
     const userId = getEntityId(createResult, ['resourceId']);
-    let roleBindFailed = false;
-
-    if (userId && formModel.roleCode) {
-      try {
-        await assignAdminUserRole(userId, {
-          roleCode: formModel.roleCode
-        });
-      } catch {
-        roleBindFailed = true;
-      }
-    }
 
     if (userId) {
       prependCreatedUser(buildCreatedUserRecord(userId));
@@ -453,12 +522,7 @@ async function submitCreate() {
       await loadUsers();
     }
 
-    if (roleBindFailed) {
-      window.$message?.warning('用户已创建，但角色分配失败，请在列表中重新分配角色');
-    } else {
-      window.$message?.success('后台用户创建成功');
-    }
-
+    window.$message?.success('后台用户创建成功');
     createVisible.value = false;
   } finally {
     submitting.value = false;
@@ -472,6 +536,10 @@ onMounted(async () => {
 
 <template>
   <NSpace vertical :size="16">
+    <NAlert type="info" :show-icon="false">
+      当前后台用户模型已按新 `api.json` 对齐，支持主角色、权限码、菜单码、数据范围的返回展示，并支持账号启用/禁用。
+    </NAlert>
+
     <NCard :bordered="false" class="card-wrapper">
       <div class="flex flex-col gap-12px">
         <NSpace wrap>
@@ -492,15 +560,12 @@ onMounted(async () => {
     </NCard>
 
     <NCard title="后台用户列表" :bordered="false" class="card-wrapper">
-      <NAlert type="info" :show-icon="false" class="mb-16px">
-        用户只能分配一个角色。分配角色后，用户只能进入该角色对应的子系统。
-      </NAlert>
-
       <NDataTable
         :columns="columns"
         :data="rows"
         :loading="loading"
         remote
+        :scroll-x="1900"
         :row-key="row => getEntityId(row, ['userId', 'id', 'username'])"
       />
       <div class="mt-16px flex justify-end">
@@ -516,11 +581,7 @@ onMounted(async () => {
       </div>
     </NCard>
 
-    <NModal v-model:show="createVisible" preset="card" title="新增后台用户" class="w-920px">
-      <NAlert type="info" :show-icon="false" class="mb-16px">
-        用户名、登录密码、选择角色为必填项。其他信息都为选填项。显示名未填写时，系统会自动使用用户名。
-      </NAlert>
-
+    <NModal v-model:show="createVisible" preset="card" title="新增后台用户" class="w-980px">
       <NForm ref="formRef" :model="formModel" :rules="rules" label-placement="left" label-width="108">
         <NGrid cols="1 s:2" responsive="screen" :x-gap="16">
           <NGi>
@@ -534,7 +595,7 @@ onMounted(async () => {
             </NFormItem>
           </NGi>
           <NGi>
-            <NFormItem label="选择角色" path="roleCode">
+            <NFormItem label="主角色" path="roleCode">
               <NSelect
                 v-model:value="formModel.roleCode"
                 :options="roleOptions"
@@ -546,23 +607,28 @@ onMounted(async () => {
             </NFormItem>
           </NGi>
           <NGi>
+            <NFormItem label="账号状态">
+              <NSelect v-model:value="formModel.status" :options="createStatusOptions" />
+            </NFormItem>
+          </NGi>
+          <NGi>
             <NFormItem label="显示名">
               <NInput v-model:value="formModel.displayName" placeholder="不填写时默认使用用户名" />
             </NFormItem>
           </NGi>
           <NGi>
+            <NFormItem label="邮箱" path="email">
+              <NInput v-model:value="formModel.email" />
+            </NFormItem>
+          </NGi>
+          <NGi>
             <NFormItem label="手机号1">
-              <NInput v-model:value="formModel.mobile" />
+              <NInput v-model:value="formModel.mobile1" />
             </NFormItem>
           </NGi>
           <NGi>
             <NFormItem label="手机号2">
               <NInput v-model:value="formModel.mobile2" />
-            </NFormItem>
-          </NGi>
-          <NGi>
-            <NFormItem label="邮箱" path="email">
-              <NInput v-model:value="formModel.email" />
             </NFormItem>
           </NGi>
           <NGi>
@@ -575,9 +641,9 @@ onMounted(async () => {
               <NInput v-model:value="formModel.qq" />
             </NFormItem>
           </NGi>
-          <NGi>
+          <NGi span="2">
             <NFormItem label="备注信息">
-              <NInput v-model:value="formModel.remark" />
+              <NInput v-model:value="formModel.remark" type="textarea" :autosize="{ minRows: 3, maxRows: 5 }" />
             </NFormItem>
           </NGi>
         </NGrid>
@@ -590,7 +656,7 @@ onMounted(async () => {
       </template>
     </NModal>
 
-    <NModal v-model:show="rawVisible" preset="card" title="用户原始数据" class="w-720px">
+    <NModal v-model:show="rawVisible" preset="card" title="用户原始数据" class="w-760px">
       <NCode :code="toPrettyJson(rawRecord)" language="json" word-wrap />
     </NModal>
   </NSpace>

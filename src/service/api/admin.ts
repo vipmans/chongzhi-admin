@@ -15,6 +15,14 @@ export function createAdminUser(data: Api.Admin.CreateUserPayload) {
   });
 }
 
+export function updateAdminUserStatus(userId: string, data: Api.Admin.UpdateUserStatusPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/users/${userId}/status`,
+    method: 'patch',
+    data
+  });
+}
+
 export function fetchAdminUserDetail(userId: string) {
   return request<Api.Admin.RawRecord>({
     url: `/admin/users/${userId}`
@@ -69,6 +77,14 @@ export function fetchSuppliers(params?: Api.Admin.SupplierListQuery) {
   return request<Api.Admin.SupplierListResponse>({
     url: '/admin/suppliers',
     params
+  });
+}
+
+export function createSupplier(data: Api.Admin.SaveSupplierPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: '/admin/suppliers',
+    method: 'post',
+    data
   });
 }
 
@@ -185,6 +201,57 @@ export function updateChannel(channelId: string, data: Api.Admin.SaveChannelPayl
 export function fetchChannelApiKeys(channelId: string) {
   return request<Api.Admin.RawList>({
     url: `/admin/channels/${channelId}/api-keys`
+  });
+}
+
+export function fetchChannelPortalAccount(channelId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/channels/${channelId}/portal-account`
+  });
+}
+
+export function openChannelPortalAccount(channelId: string, data: Api.Admin.OpenChannelPortalAccountPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/channels/${channelId}/portal-account/open`,
+    method: 'post',
+    data
+  });
+}
+
+export function approveChannelPortalAccount(channelId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/channels/${channelId}/portal-account/approve`,
+    method: 'post'
+  });
+}
+
+export function rejectChannelPortalAccount(channelId: string, data: Api.Admin.RejectChannelPortalAccountPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/channels/${channelId}/portal-account/reject`,
+    method: 'post',
+    data
+  });
+}
+
+export function resetChannelPortalPassword(channelId: string, data: Api.Admin.ResetChannelPortalPasswordPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/channels/${channelId}/portal-account/reset-password`,
+    method: 'post',
+    data
+  });
+}
+
+export function disableChannelPortalAccount(channelId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/channels/${channelId}/portal-account/disable`,
+    method: 'post'
+  });
+}
+
+export function enableChannelPortalAccount(channelId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/channels/${channelId}/portal-account/enable`,
+    method: 'post'
   });
 }
 

@@ -8,7 +8,17 @@ import { $t } from '@/locales';
 import { localStg } from '@/utils/storage';
 import { useRouteStore } from '../route';
 import { useTabStore } from '../tab';
-import { clearAuthStorage, getLoginDisplayName, getLoginRoleCodes, getLoginUsername, getToken } from './shared';
+import {
+  clearAuthStorage,
+  getLoginDataScope,
+  getLoginDisplayName,
+  getLoginMenuCodes,
+  getLoginPermissionCodes,
+  getLoginPrimaryRoleCode,
+  getLoginRoleCodes,
+  getLoginUsername,
+  getToken
+} from './shared';
 import { requestLogout } from '@/service/request/shared';
 
 export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
@@ -21,7 +31,11 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
   const userInfo: Api.Auth.SessionUser = reactive({
     userName: '',
     displayName: '',
-    roleCodes: []
+    primaryRoleCode: null,
+    roleCodes: [],
+    permissionCodes: [],
+    menuCodes: [],
+    dataScope: null
   });
 
   /** Is login */
@@ -33,7 +47,11 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     token.value = '';
     userInfo.userName = '';
     userInfo.displayName = '';
+    userInfo.primaryRoleCode = null;
     userInfo.roleCodes = [];
+    userInfo.permissionCodes = [];
+    userInfo.menuCodes = [];
+    userInfo.dataScope = null;
 
     await toLogin('pwd-login', '/');
     tabStore.cacheTabs();
@@ -51,7 +69,7 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
   /**
    * Login
    *
-   * @param userName User name
+   * @param username User name
    * @param password Password
    * @param [redirect=true] Whether to redirect after login. Default is `true`
    */
@@ -85,19 +103,34 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
 
   async function loginByToken(loginToken: Api.Auth.LoginToken, username: string) {
     const accessToken = loginToken.accessToken;
-    const loginUsername = loginToken.user?.username || username;
-    const displayName = loginToken.user?.displayName || loginUsername;
-    const roleCodes = loginToken.user?.roleCodes || [];
+    const loginUser = loginToken.user || {};
+    const loginUsername = loginUser.username || username;
+    const displayName = loginUser.displayName || loginUsername;
+    const primaryRoleCode = loginUser.primaryRoleCode ?? null;
+    const roleCodes = loginUser.roleCodes || [];
+    const permissionCodes = loginUser.permissionCodes || [];
+    const menuCodes = loginUser.menuCodes || [];
+    const dataScope = loginUser.dataScope ?? null;
 
     token.value = accessToken;
     userInfo.userName = loginUsername;
     userInfo.displayName = displayName;
+    userInfo.primaryRoleCode = primaryRoleCode;
     userInfo.roleCodes = roleCodes;
+    userInfo.permissionCodes = permissionCodes;
+    userInfo.menuCodes = menuCodes;
+    userInfo.dataScope = dataScope;
+
     localStg.set('token', accessToken);
     localStg.set('refreshToken', loginToken.refreshToken);
     localStg.set('loginUsername', loginUsername);
     localStg.set('loginDisplayName', displayName);
+    localStg.set('loginPrimaryRoleCode', primaryRoleCode);
     localStg.set('loginRoleCodes', roleCodes);
+    localStg.set('loginPermissionCodes', permissionCodes);
+    localStg.set('loginMenuCodes', menuCodes);
+    localStg.set('loginDataScope', dataScope);
+
     tabStore.clearTabs();
     return true;
   }
@@ -112,7 +145,11 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     token.value = maybeToken;
     userInfo.userName = getLoginUsername();
     userInfo.displayName = getLoginDisplayName();
+    userInfo.primaryRoleCode = getLoginPrimaryRoleCode();
     userInfo.roleCodes = getLoginRoleCodes();
+    userInfo.permissionCodes = getLoginPermissionCodes();
+    userInfo.menuCodes = getLoginMenuCodes();
+    userInfo.dataScope = getLoginDataScope();
 
     if (userInfo.userName && userInfo.roleCodes.length) {
       return;
@@ -123,15 +160,27 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     if (!error && loginUser) {
       const loginUsername = loginUser.username || userInfo.userName;
       const displayName = loginUser.displayName || userInfo.displayName || loginUsername;
+      const primaryRoleCode = loginUser.primaryRoleCode ?? userInfo.primaryRoleCode ?? null;
       const roleCodes = loginUser.roleCodes || userInfo.roleCodes || [];
+      const permissionCodes = loginUser.permissionCodes || userInfo.permissionCodes || [];
+      const menuCodes = loginUser.menuCodes || userInfo.menuCodes || [];
+      const dataScope = loginUser.dataScope ?? userInfo.dataScope ?? null;
 
       userInfo.userName = loginUsername;
       userInfo.displayName = displayName;
+      userInfo.primaryRoleCode = primaryRoleCode;
       userInfo.roleCodes = roleCodes;
+      userInfo.permissionCodes = permissionCodes;
+      userInfo.menuCodes = menuCodes;
+      userInfo.dataScope = dataScope;
 
       localStg.set('loginUsername', loginUsername);
       localStg.set('loginDisplayName', displayName);
+      localStg.set('loginPrimaryRoleCode', primaryRoleCode);
       localStg.set('loginRoleCodes', roleCodes);
+      localStg.set('loginPermissionCodes', permissionCodes);
+      localStg.set('loginMenuCodes', menuCodes);
+      localStg.set('loginDataScope', dataScope);
     }
   }
 

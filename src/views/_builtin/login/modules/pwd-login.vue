@@ -21,8 +21,8 @@ const model = reactive<FormModel>({
 });
 
 const rules: Record<keyof FormModel, App.Global.FormRule[]> = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+  username: [{ required: true, message: '请输入管理员用户名', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入登录密码', trigger: 'blur' }]
 };
 
 async function handleSubmit() {
@@ -44,7 +44,8 @@ async function handleSubmit() {
         登录后台
       </NButton>
       <NAlert type="info" :show-icon="false">
-        当前前端仅提供后台管理员密码登录。根据现有 api.json，暂不支持忘记密码、验证码登录或前端自助找回密码流程。
+        当前登录页面向内部后台管理系统，严格调用 `/admin/auth/login`、`/admin/auth/me`、`/admin/auth/logout`。
+        外包渠道系统使用独立的 `/portal/*` 认证域，不与后台管理员共用登录态。
       </NAlert>
     </NSpace>
   </NForm>

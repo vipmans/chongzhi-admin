@@ -1,9 +1,38 @@
 <script setup lang="ts">
 import { computed, h, onMounted, reactive, ref } from 'vue';
-import { NButton, NDescriptions, NTag } from 'naive-ui';
+import { NButton, NTag } from 'naive-ui';
 import type { DataTableColumns, FormInst } from 'naive-ui';
+import { CUSTOMER_SERVICE_ROLE_CODES, SUPPORT_ROLE_CODES, hasAnyRole } from '@/constants/auth';
 import { createAdminRole, fetchAdminRoleDetail, fetchAdminRoles } from '@/service/api';
 import { extractPagedData, getEntityId, normalizeQuery, pickValue, toPrettyJson } from '@/utils/admin';
+
+type RoleCreateFormModel = {
+  roleCode: string;
+  roleName: string;
+  permissionCodesText: string;
+  menuCodesText: string;
+  dataScope: Api.Admin.DataScope;
+};
+
+type RoleTemplate = {
+  key: 'support' | 'customerService';
+  title: string;
+  roleCode: string;
+  roleName: string;
+  platformLabel: string;
+  positionLabel: string;
+  description: string;
+  dataScope: Api.Admin.DataScope;
+  menuCodes: string[];
+  permissionCodes: string[];
+  aliasCodes: string[];
+};
+
+type RoleProfile = {
+  platformLabel: string;
+  positionLabel: string;
+  description: string;
+};
 
 const loading = ref(false);
 const submitting = ref(false);
@@ -24,16 +53,137 @@ const queryModel = reactive({
   status: ''
 });
 
-const formModel = reactive<Api.Admin.CreateRolePayload>({
+const formModel = reactive<RoleCreateFormModel>({
   roleCode: '',
-  roleName: ''
+  roleName: '',
+  permissionCodesText: '',
+  menuCodesText: '',
+  dataScope: 'ALL'
 });
+
+const roleTemplates: RoleTemplate[] = [
+  {
+    key: 'customerService',
+    title: '平台客服角色',
+    roleCode: 'CUSTOMER_SERVICE',
+    roleName: '平台客服',
+    platformLabel: '平台客服',
+    positionLabel: '客服/售后处理',
+    description: '负责订单查询、通知跟进和售后投诉处理，不再复用技术支持角色。',
+    dataScope: 'SELF_ASSIGNED',
+    menuCodes: ['orders_list', 'notifications_tasks', 'notifications_dead-letters'],
+    permissionCodes: [],
+    aliasCodes: [...CUSTOMER_SERVICE_ROLE_CODES]
+  },
+  {
+    key: 'support',
+    title: '技术支持角色',
+    roleCode: 'SUPPORT',
+    roleName: '技术支持',
+    platformLabel: '技术支持平台',
+    positionLabel: '运维/排障支持',
+    description: '负责系统运维、异步任务重试、日志排障和审计分析，不承担客服售后职责。',
+    dataScope: 'ALL',
+    menuCodes: ['ops_jobs', 'ops_audit-logs', 'ops_login-logs'],
+    permissionCodes: [],
+    aliasCodes: [...SUPPORT_ROLE_CODES]
+  }
+];
 
 const statusOptions = [
   { label: '全部状态', value: '' },
   { label: 'ACTIVE', value: 'ACTIVE' },
-  { label: 'INACTIVE', value: 'INACTIVE' }
+  { label: 'DISABLED', value: 'DISABLED' }
 ];
+
+const dataScopeOptions = [
+  { label: '全部数据', value: 'ALL' },
+  { label: '仅本人创建', value: 'SELF_CREATED' },
+  { label: '仅本人分配', value: 'SELF_ASSIGNED' }
+];
+
+function parseCodes(text: string) {
+  return text
+    .split(/[\n,，]+/g)
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
+function getRoleCode(row: Api.Admin.RawRecord) {
+  return String(pickValue(row, ['roleCode', 'code'], '') || '').trim().toUpperCase();
+}
+
+function getRoleName(row: Api.Admin.RawRecord) {
+  return String(pickValue(row, ['roleName', 'name'], '') || '').trim();
+}
+
+function getRoleProfile(row: Api.Admin.RawRecord): RoleProfile {
+  const roleCode = getRoleCode(row);
+  const roleName = getRoleName(row);
+
+  if (hasAnyRole([roleCode], ['SUPER_ADMIN']) || /超级管理员/.test(roleName)) {
+    return {
+      platformLabel: '权限平台',
+      positionLabel: '超级管理员',
+      description: '统一管理后台账号、角色、菜单和全局权限。'
+    };
+  }
+
+  if (hasAnyRole([roleCode], ['OPS']) || /运营/.test(roleName)) {
+    return {
+      platformLabel: '运营平台',
+      positionLabel: '平台运营',
+      description: '负责渠道、商品、供应商、订单和通知等核心运营流程。'
+    };
+  }
+
+  if (hasAnyRole([roleCode], ['FINANCE']) || /财务/.test(roleName)) {
+    return {
+      platformLabel: '财务平台',
+      positionLabel: '平台财务',
+      description: '负责账户、账务流水、结算与资金类数据管理。'
+    };
+  }
+
+  if (hasAnyRole([roleCode], ['RISK']) || /风控/.test(roleName)) {
+    return {
+      platformLabel: '风控平台',
+      positionLabel: '风控专员',
+      description: '负责风控规则、黑白名单和交易风险决策。'
+    };
+  }
+
+  if (hasAnyRole([roleCode], [...SUPPORT_ROLE_CODES]) || /技术支持/.test(roleName)) {
+    return {
+      platformLabel: '技术支持平台',
+      positionLabel: '技术支持',
+      description: '负责系统运维、任务重试、日志排查和技术支持。'
+    };
+  }
+
+  if (hasAnyRole([roleCode], [...CUSTOMER_SERVICE_ROLE_CODES]) || /客服|投诉|售后/.test(roleName)) {
+    return {
+      platformLabel: '平台客服',
+      positionLabel: '客服/售后',
+      description: '负责订单跟进、通知核查和投诉售后处理。'
+    };
+  }
+
+  return {
+    platformLabel: '待归类',
+    positionLabel: '自定义角色',
+    description: '按后端返回的权限码、菜单码和数据范围生效。'
+  };
+}
+
+function fillTemplate(template: RoleTemplate) {
+  formModel.roleCode = template.roleCode;
+  formModel.roleName = template.roleName;
+  formModel.permissionCodesText = template.permissionCodes.join('\n');
+  formModel.menuCodesText = template.menuCodes.join('\n');
+  formModel.dataScope = template.dataScope;
+  createVisible.value = true;
+}
 
 const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
   {
@@ -47,14 +197,48 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
     render: row => pickValue(row, ['roleName', 'name'])
   },
   {
+    key: 'platformLabel',
+    title: '平台归属',
+    render: row => {
+      const profile = getRoleProfile(row);
+      return h(NTag, { size: 'small', type: 'info' }, { default: () => profile.platformLabel });
+    }
+  },
+  {
+    key: 'positionLabel',
+    title: '角色定位',
+    render: row => {
+      const profile = getRoleProfile(row);
+      return h('div', { class: 'flex flex-col gap-4px' }, [
+        h('span', { class: 'text-13px font-600 text-#0f172a' }, profile.positionLabel),
+        h('span', { class: 'text-12px text-#64748b' }, profile.description)
+      ]);
+    }
+  },
+  {
     key: 'status',
     title: '状态',
     render: row => {
       const status = pickValue(row, ['status'], '-');
-      const type = status === 'ACTIVE' ? 'success' : status === 'INACTIVE' ? 'warning' : 'default';
+      const type = status === 'ACTIVE' ? 'success' : status === 'DISABLED' ? 'warning' : 'default';
 
       return h(NTag, { size: 'small', type }, { default: () => status });
     }
+  },
+  {
+    key: 'permissionCodes',
+    title: '权限码数',
+    render: row => String(Array.isArray(row.permissionCodes) ? row.permissionCodes.length : 0)
+  },
+  {
+    key: 'menuCodes',
+    title: '菜单码数',
+    render: row => String(Array.isArray(row.menuCodes) ? row.menuCodes.length : 0)
+  },
+  {
+    key: 'dataScope',
+    title: '数据范围',
+    render: row => pickValue(row, ['dataScope'])
   },
   {
     key: 'createdAt',
@@ -106,6 +290,9 @@ const rules: Record<string, App.Global.FormRule[]> = {
 function resetForm() {
   formModel.roleCode = '';
   formModel.roleName = '';
+  formModel.permissionCodesText = '';
+  formModel.menuCodesText = '';
+  formModel.dataScope = 'ALL';
 }
 
 function openCreate() {
@@ -192,7 +379,10 @@ async function submitCreate() {
   try {
     await createAdminRole({
       roleCode: formModel.roleCode.trim(),
-      roleName: formModel.roleName.trim()
+      roleName: formModel.roleName.trim(),
+      permissionCodes: parseCodes(formModel.permissionCodesText),
+      menuCodes: parseCodes(formModel.menuCodesText),
+      dataScope: formModel.dataScope
     });
 
     window.$message?.success('角色创建成功');
@@ -212,9 +402,46 @@ onMounted(() => {
 <template>
   <NSpace vertical :size="16">
     <NAlert type="info" :show-icon="false">
-      已恢复角色列表与角色创建、角色详情配置能力。根据当前 `api.json`，角色模块已落地接口为列表查询、创建、详情查询；
-      若后续后端补充角色修改或删除接口，再继续接入对应按钮和表单。
+      根据桌面版 `api.json` 与需求文档，`SUPPORT` 在统一管理平台中代表“技术支持”，不再表示客服角色。
+      平台客服需要作为独立后台角色创建，建议使用 `CUSTOMER_SERVICE` 作为标准角色编码。
     </NAlert>
+
+    <NCard title="内置角色模板" :bordered="false" class="card-wrapper">
+      <div class="grid gap-16px xl:grid-cols-2">
+        <NCard
+          v-for="template in roleTemplates"
+          :key="template.key"
+          size="small"
+          embedded
+          class="border border-solid border-#e2e8f0"
+        >
+          <div class="flex flex-col gap-12px">
+            <div class="flex items-start justify-between gap-12px">
+              <div>
+                <div class="text-16px font-600 text-#0f172a">{{ template.title }}</div>
+                <div class="mt-4px text-13px text-#64748b">{{ template.description }}</div>
+              </div>
+              <NButton type="primary" secondary @click="fillTemplate(template)">使用模板</NButton>
+            </div>
+
+            <div class="flex flex-wrap gap-8px">
+              <NTag size="small" type="info">{{ template.platformLabel }}</NTag>
+              <NTag size="small" type="success">{{ template.positionLabel }}</NTag>
+              <NTag size="small">推荐编码：{{ template.roleCode }}</NTag>
+              <NTag size="small">数据范围：{{ template.dataScope }}</NTag>
+            </div>
+
+            <div class="text-13px text-#334155">
+              识别别名：{{ template.aliasCodes.join(' / ') }}
+            </div>
+
+            <div class="text-13px text-#334155">
+              推荐菜单码：{{ template.menuCodes.join('、') || '按实际菜单补充' }}
+            </div>
+          </div>
+        </NCard>
+      </div>
+    </NCard>
 
     <NCard :bordered="false" class="card-wrapper">
       <div class="flex flex-col gap-12px">
@@ -236,6 +463,7 @@ onMounted(() => {
         :data="rows"
         :loading="loading"
         remote
+        :scroll-x="1700"
         :row-key="row => getEntityId(row, ['roleId', 'id', 'roleCode'])"
       />
       <div class="mt-16px flex justify-end">
@@ -251,17 +479,32 @@ onMounted(() => {
       </div>
     </NCard>
 
-    <NModal v-model:show="createVisible" preset="card" title="新增角色" class="w-480px">
-      <NAlert type="info" :show-icon="false" class="mb-16px">
-        当前支持新建角色编码与角色名称，创建后可在后台用户页继续为用户分配角色。
-      </NAlert>
-
-      <NForm ref="formRef" :model="formModel" :rules="rules" label-placement="left" label-width="96">
+    <NModal v-model:show="createVisible" preset="card" title="新增角色" class="w-720px">
+      <NForm ref="formRef" :model="formModel" :rules="rules" label-placement="left" label-width="108">
         <NFormItem label="角色编码" path="roleCode">
-          <NInput v-model:value="formModel.roleCode" />
+          <NInput v-model:value="formModel.roleCode" placeholder="例如：CUSTOMER_SERVICE 或 SUPPORT" />
         </NFormItem>
         <NFormItem label="角色名称" path="roleName">
-          <NInput v-model:value="formModel.roleName" />
+          <NInput v-model:value="formModel.roleName" placeholder="例如：平台客服、技术支持" />
+        </NFormItem>
+        <NFormItem label="数据范围">
+          <NSelect v-model:value="formModel.dataScope" :options="dataScopeOptions" />
+        </NFormItem>
+        <NFormItem label="权限码">
+          <NInput
+            v-model:value="formModel.permissionCodesText"
+            type="textarea"
+            :autosize="{ minRows: 4, maxRows: 6 }"
+            placeholder="支持逗号或换行分隔，例如：admin.user.read,admin.user.write"
+          />
+        </NFormItem>
+        <NFormItem label="菜单码">
+          <NInput
+            v-model:value="formModel.menuCodesText"
+            type="textarea"
+            :autosize="{ minRows: 4, maxRows: 6 }"
+            placeholder="支持逗号或换行分隔，例如：orders_list,notifications_tasks"
+          />
         </NFormItem>
       </NForm>
       <template #footer>
@@ -272,7 +515,7 @@ onMounted(() => {
       </template>
     </NModal>
 
-    <NModal v-model:show="detailVisible" preset="card" title="角色详情配置" class="w-760px">
+    <NModal v-model:show="detailVisible" preset="card" title="角色详情配置" class="w-860px">
       <NSpin :show="detailLoading">
         <NDescriptions label-placement="left" bordered :column="2" class="mb-16px">
           <NDescriptionsItem label="角色ID">
@@ -284,26 +527,55 @@ onMounted(() => {
           <NDescriptionsItem label="角色名称">
             {{ pickValue(detailRecord, ['roleName'], '-') }}
           </NDescriptionsItem>
+          <NDescriptionsItem label="平台归属">
+            {{ getRoleProfile(detailRecord).platformLabel }}
+          </NDescriptionsItem>
+          <NDescriptionsItem label="角色定位">
+            {{ getRoleProfile(detailRecord).positionLabel }}
+          </NDescriptionsItem>
           <NDescriptionsItem label="状态">
             {{ pickValue(detailRecord, ['status'], '-') }}
+          </NDescriptionsItem>
+          <NDescriptionsItem label="数据范围">
+            {{ pickValue(detailRecord, ['dataScope'], '-') }}
           </NDescriptionsItem>
           <NDescriptionsItem label="创建时间">
             {{ pickValue(detailRecord, ['createdAt', 'createTime'], '-') }}
           </NDescriptionsItem>
-          <NDescriptionsItem label="更新时间">
-            {{ pickValue(detailRecord, ['updatedAt', 'updateTime'], '-') }}
-          </NDescriptionsItem>
         </NDescriptions>
 
-        <NAlert type="warning" :show-icon="false" class="mb-16px">
-          当前后端仅提供角色详情查询接口，暂未提供角色修改、删除、权限树保存等接口，因此本页先恢复为只读配置视图。
+        <NAlert type="info" :show-icon="false" class="mb-16px">
+          {{ getRoleProfile(detailRecord).description }}
         </NAlert>
 
-        <NCode :code="toPrettyJson(detailRecord)" language="json" word-wrap />
+        <NGrid cols="1 l:2" responsive="screen" :x-gap="16" :y-gap="16">
+          <NGi>
+            <NCard title="权限码" :bordered="false" class="card-wrapper">
+              <div class="flex flex-wrap gap-8px">
+                <NTag v-for="code in detailRecord.permissionCodes || []" :key="code" type="primary" size="small">
+                  {{ code }}
+                </NTag>
+                <span v-if="!(detailRecord.permissionCodes || []).length" class="text-13px text-#64748b">暂无权限码</span>
+              </div>
+            </NCard>
+          </NGi>
+          <NGi>
+            <NCard title="菜单码" :bordered="false" class="card-wrapper">
+              <div class="flex flex-wrap gap-8px">
+                <NTag v-for="code in detailRecord.menuCodes || []" :key="code" type="success" size="small">
+                  {{ code }}
+                </NTag>
+                <span v-if="!(detailRecord.menuCodes || []).length" class="text-13px text-#64748b">暂无菜单码</span>
+              </div>
+            </NCard>
+          </NGi>
+        </NGrid>
+
+        <NCode class="mt-16px" :code="toPrettyJson(detailRecord)" language="json" word-wrap />
       </NSpin>
     </NModal>
 
-    <NModal v-model:show="rawVisible" preset="card" title="角色原始数据" class="w-720px">
+    <NModal v-model:show="rawVisible" preset="card" title="角色原始数据" class="w-760px">
       <NCode :code="toPrettyJson(rawRecord)" language="json" word-wrap />
     </NModal>
   </NSpace>

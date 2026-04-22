@@ -6,40 +6,65 @@ export function setupElegantRouter() {
   const businessRouteMeta: Partial<Record<string, Partial<RouteMeta>>> = {
     home: { title: '工作台', icon: 'mdi:view-dashboard-outline', order: 1 },
     access: { title: '后台权限', icon: 'mdi:shield-account-outline', order: 2 },
-    access_users: { title: '后台用户', order: 1 },
-    access_roles: { title: '角色管理', order: 2 },
+    access_users: { title: '后台用户', order: 1, roles: ['SUPER_ADMIN', 'R_SUPER'] },
+    access_roles: { title: '角色管理', order: 2, roles: ['SUPER_ADMIN', 'R_SUPER'] },
     channels: { title: '渠道管理', icon: 'mdi:lan-connect', order: 3 },
-    channels_list: { title: '渠道列表', order: 1 },
-    channels_recharge: { title: '渠道充值', order: 2 },
-    channels_detail: { title: '渠道详情', hideInMenu: true, activeMenu: 'channels_list' as RouteKey },
+    channels_list: { title: '渠道列表', order: 1, roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS'] },
+    channels_recharge: { title: '渠道充值', order: 2, roles: ['SUPER_ADMIN', 'R_SUPER', 'FINANCE'] },
+    channels_detail: {
+      title: '渠道详情',
+      hideInMenu: true,
+      activeMenu: 'channels_list' as RouteKey,
+      roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS', 'FINANCE']
+    },
     products: { title: '商品中心', icon: 'mdi:cube-outline', order: 4 },
-    products_list: { title: '平台商品', order: 1 },
-    products_detail: { title: '商品详情', hideInMenu: true, activeMenu: 'products_list' as RouteKey },
+    products_list: { title: '平台商品', order: 1, roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS'] },
+    products_detail: {
+      title: '商品详情',
+      hideInMenu: true,
+      activeMenu: 'products_list' as RouteKey,
+      roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS']
+    },
     suppliers: { title: '供应商管理', icon: 'mdi:truck-delivery-outline', order: 4.5 },
-    suppliers_list: { title: '供应商列表', order: 1 },
-    suppliers_detail: { title: '供应商详情', hideInMenu: true, activeMenu: 'suppliers_list' as RouteKey },
+    suppliers_list: { title: '供应商列表', order: 1, roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS'] },
+    suppliers_detail: {
+      title: '供应商详情',
+      hideInMenu: true,
+      activeMenu: 'suppliers_list' as RouteKey,
+      roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS']
+    },
     risk: { title: '风控管理', icon: 'mdi:shield-alert-outline', order: 5 },
-    risk_rules: { title: '风控规则', order: 1 },
-    risk_lists: { title: '黑白名单', order: 2 },
-    risk_decisions: { title: '风控决策', order: 3 },
+    risk_rules: { title: '风控规则', order: 1, roles: ['SUPER_ADMIN', 'R_SUPER', 'RISK'] },
+    risk_lists: { title: '黑白名单', order: 2, roles: ['SUPER_ADMIN', 'R_SUPER', 'RISK'] },
+    risk_decisions: { title: '风控决策', order: 3, roles: ['SUPER_ADMIN', 'R_SUPER', 'RISK'] },
     orders: { title: '订单中心', icon: 'mdi:clipboard-list-outline', order: 6 },
-    orders_list: { title: '订单列表', order: 1 },
-    orders_detail: { title: '订单详情', hideInMenu: true, activeMenu: 'orders_list' as RouteKey },
+    orders_list: { title: '订单列表', order: 1, roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS', 'SUPPORT'] },
+    orders_detail: {
+      title: '订单详情',
+      hideInMenu: true,
+      activeMenu: 'orders_list' as RouteKey,
+      roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS', 'SUPPORT']
+    },
     finance: { title: '财务中心', icon: 'mdi:wallet-outline', order: 7 },
-    finance_accounts: { title: '账户信息', order: 1 },
-    finance_ledger: { title: '账务流水', order: 2 },
+    finance_accounts: { title: '账户信息', order: 1, roles: ['SUPER_ADMIN', 'R_SUPER', 'FINANCE'] },
+    finance_ledger: { title: '账务流水', order: 2, roles: ['SUPER_ADMIN', 'R_SUPER', 'FINANCE'] },
     notifications: { title: '通知管理', icon: 'mdi:bell-outline', order: 8 },
-    notifications_tasks: { title: '通知任务', order: 1 },
-    'notifications_dead-letters': { title: '通知死信', order: 2 },
+    notifications_tasks: { title: '通知任务', order: 1, roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS', 'SUPPORT'] },
+    'notifications_dead-letters': {
+      title: '通知死信',
+      order: 2,
+      roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS', 'SUPPORT']
+    },
     notifications_detail: {
       title: '通知详情',
       hideInMenu: true,
-      activeMenu: 'notifications_tasks' as RouteKey
+      activeMenu: 'notifications_tasks' as RouteKey,
+      roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS', 'SUPPORT']
     },
     ops: { title: '运营审计', icon: 'mdi:clipboard-text-search-outline', order: 8.5 },
-    ops_jobs: { title: '异步任务', order: 1 },
-    'ops_audit-logs': { title: '操作审计', order: 2 },
-    'ops_login-logs': { title: '登录日志', order: 3 }
+    ops_jobs: { title: '异步任务', order: 1, roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS'] },
+    'ops_audit-logs': { title: '操作审计', order: 2, roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS'] },
+    'ops_login-logs': { title: '登录日志', order: 3, roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS'] }
   };
 
   return ElegantVueRouter({
