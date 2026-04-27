@@ -63,6 +63,11 @@ declare namespace Api {
       supplierOrderNo?: string;
     }
 
+    interface ComplaintListQuery extends Omit<PagedQuery, 'startTime' | 'endTime'> {
+      orderNo?: string;
+      channelId?: string;
+    }
+
     interface OrderEventListQuery extends Omit<PagedQuery, 'keyword' | 'status'> {}
 
     interface LedgerEntryListQuery extends PagedQuery {
@@ -77,6 +82,27 @@ declare namespace Api {
       taskNo?: string;
       bizNo?: string;
       deliveryStatus?: string;
+    }
+
+    interface MobileSegmentListQuery extends PagedQuery {
+      mobilePrefix?: string;
+      provinceName?: string;
+      cityName?: string;
+      ispCode?: string;
+      ispName?: string;
+      sourceName?: string;
+    }
+
+    interface MobileSegmentImportListQuery extends PagedQuery {
+      batchNo?: string;
+      sourceName?: string;
+      sourceVersion?: string;
+      importMode?: string;
+      operatorUsername?: string;
+    }
+
+    interface MobileSegmentValidationIssueListQuery extends PagedQuery {
+      issueType?: string;
     }
 
     interface DeliveryLogListQuery extends Omit<PagedQuery, 'keyword' | 'status'> {}
@@ -334,6 +360,33 @@ declare namespace Api {
       timeoutMs?: number;
     }
 
+    interface SaveMobileSegmentPayload {
+      mobilePrefix: string;
+      provinceName: string;
+      cityName?: string;
+      ispCode: string;
+      ispName: string;
+      status?: string;
+      sourceName?: string;
+      sourceVersion?: string;
+      remark?: string;
+    }
+
+    interface UpdateMobileSegmentStatusPayload {
+      status: 'ACTIVE' | 'INACTIVE';
+      remark?: string;
+    }
+
+    interface PreviewMobileSegmentImportPayload {
+      content: string;
+      fileName: string;
+      importMode: 'INCREMENTAL' | 'FULL';
+      deleteMissing?: boolean;
+      sourceName: string;
+      sourceVersion: string;
+      remark?: string;
+    }
+
     type CarrierCode = 'CMCC' | 'CTCC' | 'CUCC' | 'CBN';
 
     type ProductType = 'FAST' | 'MIXED';
@@ -374,6 +427,50 @@ declare namespace Api {
 
     interface AddOrderRemarkPayload {
       remark: string;
+    }
+
+    interface OrderManualStatusPayload {
+      mainStatus: string;
+      supplierStatus?: string;
+      refundStatus?: string;
+      remark?: string;
+    }
+
+    interface CreateComplaintPayload {
+      orderNo?: string;
+      channelId?: string;
+      mobile?: string;
+      title: string;
+      content: string;
+      category?: string;
+      priority?: string;
+      source?: string;
+      ext?: JsonObject;
+    }
+
+    interface ComplaintAssigneePayload {
+      assigneeUserId: string;
+    }
+
+    interface ComplaintStatusPayload {
+      status: string;
+      reason?: string;
+    }
+
+    interface ComplaintResultPayload {
+      result: string;
+    }
+
+    interface ComplaintFeedbackPayload {
+      feedback: string;
+    }
+
+    interface ComplaintReasonPayload {
+      reason?: string;
+    }
+
+    interface ComplaintProgressLogPayload {
+      content: string;
     }
   }
 }

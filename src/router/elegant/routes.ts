@@ -115,6 +115,28 @@ export const generatedRoutes: GeneratedRoute[] = [
     ]
   },
   {
+    name: 'complaints',
+    path: '/complaints',
+    component: 'layout.base',
+    meta: {
+      title: '投诉管理',
+      icon: 'mdi:message-alert-outline',
+      order: 7.5
+    },
+    children: [
+      {
+        name: 'complaints_list',
+        path: '/complaints/list',
+        component: 'view.complaints_list',
+        meta: {
+          title: '投诉工单',
+          order: 1,
+          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS', 'CUSTOMER_SERVICE']
+        }
+      }
+    ]
+  },
+  {
     name: 'finance',
     path: '/finance',
     component: 'layout.base',
@@ -247,7 +269,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         meta: {
           title: '异步任务',
           order: 1,
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS', 'SUPPORT']
+          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS']
         }
       },
       {
@@ -257,6 +279,16 @@ export const generatedRoutes: GeneratedRoute[] = [
         meta: {
           title: '登录日志',
           order: 3,
+          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS', 'SUPPORT']
+        }
+      },
+      {
+        name: 'ops_mobile-segments',
+        path: '/ops/mobile-segments',
+        component: 'view.ops_mobile-segments',
+        meta: {
+          title: '号段管理',
+          order: 1.5,
           roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS', 'SUPPORT']
         }
       }
@@ -280,7 +312,7 @@ export const generatedRoutes: GeneratedRoute[] = [
           title: '订单详情',
           hideInMenu: true,
           activeMenu: 'orders_list',
-          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS', 'CUSTOMER_SERVICE']
+          roles: ['SUPER_ADMIN', 'R_SUPER', 'OPS', 'SUPPORT']
         }
       },
       {

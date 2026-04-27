@@ -71,7 +71,7 @@ const roleTemplates: RoleTemplate[] = [
     positionLabel: '客服/售后处理',
     description: '负责订单查询、通知跟进和售后投诉处理，不再复用技术支持角色。',
     dataScope: 'SELF_ASSIGNED',
-    menuCodes: ['orders_list', 'notifications_tasks', 'notifications_dead-letters'],
+    menuCodes: ['orders_list', 'complaints_list', 'notifications_tasks', 'notifications_dead-letters'],
     permissionCodes: [],
     aliasCodes: [...CUSTOMER_SERVICE_ROLE_CODES]
   },
@@ -84,7 +84,7 @@ const roleTemplates: RoleTemplate[] = [
     positionLabel: '运维/排障支持',
     description: '负责系统运维、异步任务重试、日志排障和审计分析，不承担客服售后职责。',
     dataScope: 'ALL',
-    menuCodes: ['ops_jobs', 'ops_audit-logs', 'ops_login-logs'],
+    menuCodes: ['ops_jobs', 'ops_mobile-segments', 'ops_audit-logs', 'ops_login-logs'],
     permissionCodes: [],
     aliasCodes: [...SUPPORT_ROLE_CODES]
   }

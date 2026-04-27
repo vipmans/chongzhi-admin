@@ -27,6 +27,8 @@ declare module "@elegant-router/types" {
     "channels_detail": "/channels/detail/:id";
     "channels_list": "/channels/list";
     "channels_recharge": "/channels/recharge";
+    "complaints": "/complaints";
+    "complaints_list": "/complaints/list";
     "finance": "/finance";
     "finance_accounts": "/finance/accounts";
     "finance_ledger": "/finance/ledger";
@@ -41,6 +43,7 @@ declare module "@elegant-router/types" {
     "ops_audit-logs": "/ops/audit-logs";
     "ops_jobs": "/ops/jobs";
     "ops_login-logs": "/ops/login-logs";
+    "ops_mobile-segments": "/ops/mobile-segments";
     "orders": "/orders";
     "orders_detail": "/orders/detail/:orderNo";
     "orders_list": "/orders/list";
@@ -90,6 +93,7 @@ declare module "@elegant-router/types" {
     | "500"
     | "access"
     | "channels"
+    | "complaints"
     | "finance"
     | "home"
     | "iframe-page"
@@ -126,6 +130,7 @@ declare module "@elegant-router/types" {
     | "channels_detail"
     | "channels_list"
     | "channels_recharge"
+    | "complaints_list"
     | "finance_accounts"
     | "finance_ledger"
     | "home"
@@ -135,6 +140,7 @@ declare module "@elegant-router/types" {
     | "ops_audit-logs"
     | "ops_jobs"
     | "ops_login-logs"
+    | "ops_mobile-segments"
     | "orders_detail"
     | "orders_list"
     | "products_detail"

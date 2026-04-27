@@ -544,6 +544,28 @@ export function retryOrderNotify(orderNo: string) {
   });
 }
 
+export function manualUpdateOrderStatus(orderNo: string, data: Api.Admin.OrderManualStatusPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/orders/${orderNo}/manual-status`,
+    method: 'post',
+    data
+  });
+}
+
+export function refreshOrderStatus(orderNo: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/orders/${orderNo}/refresh-status`,
+    method: 'post'
+  });
+}
+
+export function retryOrderRecharge(orderNo: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/orders/${orderNo}/retry-recharge`,
+    method: 'post'
+  });
+}
+
 export function fetchAccounts(params?: Api.Admin.PagedQuery) {
   return request<Api.Admin.PagedResponse<Api.Admin.RawRecord>>({
     url: '/admin/accounts',
@@ -608,6 +630,18 @@ export function fetchJobDetail(jobId: string) {
   });
 }
 
+export function fetchJobItems(jobId: string) {
+  return request<Api.Admin.RawList>({
+    url: `/admin/jobs/${jobId}/items`
+  });
+}
+
+export function fetchJobArtifacts(jobId: string) {
+  return request<Api.Admin.RawList>({
+    url: `/admin/jobs/${jobId}/artifacts`
+  });
+}
+
 export function retryJob(jobId: string) {
   return request<Api.Admin.RawRecord>({
     url: `/admin/jobs/${jobId}/retry`,
@@ -639,6 +673,220 @@ export function fetchAuditLogs(params?: Api.Admin.PagedQuery) {
 export function fetchLoginLogs(params?: Api.Admin.PagedQuery) {
   return request<Api.Admin.PagedResponse<Api.Admin.RawRecord>>({
     url: '/admin/login-logs',
+    params
+  });
+}
+
+export function fetchComplaints(params?: Api.Admin.ComplaintListQuery) {
+  return request<Api.Admin.PagedResponse<Api.Admin.RawRecord>>({
+    url: '/admin/complaints/',
+    params
+  });
+}
+
+export function createComplaint(data: Api.Admin.CreateComplaintPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: '/admin/complaints/',
+    method: 'post',
+    data
+  });
+}
+
+export function exportComplaints() {
+  return request<Api.Admin.RawRecord>({
+    url: '/admin/complaints/export',
+    method: 'post'
+  });
+}
+
+export function fetchComplaintStats() {
+  return request<Api.Admin.RawRecord>({
+    url: '/admin/complaints/stats'
+  });
+}
+
+export function fetchComplaintDetail(complaintId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/complaints/${complaintId}`
+  });
+}
+
+export function assignComplaint(complaintId: string, data: Api.Admin.ComplaintAssigneePayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/complaints/${complaintId}/assign`,
+    method: 'post',
+    data
+  });
+}
+
+export function transferComplaint(complaintId: string, data: Api.Admin.ComplaintAssigneePayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/complaints/${complaintId}/transfer`,
+    method: 'post',
+    data
+  });
+}
+
+export function updateComplaintStatus(complaintId: string, data: Api.Admin.ComplaintStatusPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/complaints/${complaintId}/status`,
+    method: 'post',
+    data
+  });
+}
+
+export function saveComplaintResult(complaintId: string, data: Api.Admin.ComplaintResultPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/complaints/${complaintId}/result`,
+    method: 'post',
+    data
+  });
+}
+
+export function saveComplaintFeedback(complaintId: string, data: Api.Admin.ComplaintFeedbackPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/complaints/${complaintId}/feedback`,
+    method: 'post',
+    data
+  });
+}
+
+export function closeComplaint(complaintId: string, data: Api.Admin.ComplaintReasonPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/complaints/${complaintId}/close`,
+    method: 'post',
+    data
+  });
+}
+
+export function reopenComplaint(complaintId: string, data: Api.Admin.ComplaintReasonPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/complaints/${complaintId}/reopen`,
+    method: 'post',
+    data
+  });
+}
+
+export function addComplaintProgressLog(complaintId: string, data: Api.Admin.ComplaintProgressLogPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/complaints/${complaintId}/progress-logs`,
+    method: 'post',
+    data
+  });
+}
+
+export function fetchMobileSegments(params?: Api.Admin.MobileSegmentListQuery) {
+  return request<Api.Admin.PagedResponse<Api.Admin.RawRecord>>({
+    url: '/admin/mobile-segments/',
+    params
+  });
+}
+
+export function createMobileSegment(data: Api.Admin.SaveMobileSegmentPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: '/admin/mobile-segments/',
+    method: 'post',
+    data
+  });
+}
+
+export function fetchMobileSegmentDetail(mobilePrefix: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/mobile-segments/${mobilePrefix}`
+  });
+}
+
+export function updateMobileSegment(mobilePrefix: string, data: Api.Admin.SaveMobileSegmentPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/mobile-segments/${mobilePrefix}`,
+    method: 'put',
+    data
+  });
+}
+
+export function deleteMobileSegment(mobilePrefix: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/mobile-segments/${mobilePrefix}`,
+    method: 'delete'
+  });
+}
+
+export function updateMobileSegmentStatus(mobilePrefix: string, data: Api.Admin.UpdateMobileSegmentStatusPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/mobile-segments/${mobilePrefix}/status`,
+    method: 'patch',
+    data
+  });
+}
+
+export function fetchMobileSegmentChangeLogs(mobilePrefix: string, params?: Api.Admin.PagedQuery) {
+  return request<Api.Admin.PagedResponse<Api.Admin.RawRecord>>({
+    url: `/admin/mobile-segments/${mobilePrefix}/change-logs`,
+    params
+  });
+}
+
+export function fetchMobileSegmentImportTemplate() {
+  return request<Api.Admin.RawRecord>({
+    url: '/admin/mobile-segments/import-template'
+  });
+}
+
+export function fetchMobileSegmentExport() {
+  return request<Api.Admin.RawRecord>({
+    url: '/admin/mobile-segments/export'
+  });
+}
+
+export function previewMobileSegmentImport(data: Api.Admin.PreviewMobileSegmentImportPayload) {
+  return request<Api.Admin.RawRecord>({
+    url: '/admin/mobile-segments/imports/preview',
+    method: 'post',
+    data
+  });
+}
+
+export function executeMobileSegmentImport(batchId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/mobile-segments/imports/${batchId}/execute`,
+    method: 'post'
+  });
+}
+
+export function fetchMobileSegmentImports(params?: Api.Admin.MobileSegmentImportListQuery) {
+  return request<Api.Admin.PagedResponse<Api.Admin.RawRecord>>({
+    url: '/admin/mobile-segments/imports',
+    params
+  });
+}
+
+export function fetchMobileSegmentImportErrors(batchId: string) {
+  return request<Api.Admin.RawList | Api.Admin.PagedResponse<Api.Admin.RawRecord>>({
+    url: `/admin/mobile-segments/imports/${batchId}/errors`
+  });
+}
+
+export function fetchMobileSegmentImportDetail(batchId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/mobile-segments/imports/${batchId}`
+  });
+}
+
+export function fetchMobileSegmentImportDiff(batchId: string) {
+  return request<Api.Admin.RawRecord>({
+    url: `/admin/mobile-segments/imports/${batchId}/diff`
+  });
+}
+
+export function fetchMobileSegmentValidationSummary() {
+  return request<Api.Admin.RawRecord>({
+    url: '/admin/mobile-segments/validation/summary'
+  });
+}
+
+export function fetchMobileSegmentValidationIssues(params?: Api.Admin.MobileSegmentValidationIssueListQuery) {
+  return request<Api.Admin.PagedResponse<Api.Admin.RawRecord>>({
+    url: '/admin/mobile-segments/validation/issues',
     params
   });
 }
