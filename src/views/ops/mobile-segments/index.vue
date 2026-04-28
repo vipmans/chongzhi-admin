@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, nextTick, onMounted, reactive, ref } from 'vue';
+import { computed, h, nextTick, onMounted, reactive, ref, shallowRef } from 'vue';
 import { NButton, NSpace, NTag } from 'naive-ui';
 import type { DataTableColumns, FormInst } from 'naive-ui';
 import {
@@ -33,6 +33,18 @@ import {
 } from '@/utils/admin';
 
 type SegmentFormMode = 'create' | 'edit';
+
+function getDefaultImportSourceVersion() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${now.getFullYear()}-${month}`;
+}
+
+function formatFileSize(size: number) {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(2)} MB`;
+}
 
 const loading = ref(false);
 const importLoading = ref(false);
@@ -75,6 +87,7 @@ const importVisible = ref(false);
 const importFormRef = ref<FormInst | null>(null);
 const importFileInputRef = ref<HTMLInputElement | null>(null);
 const previewResult = ref<Api.Admin.RawRecord>({});
+const importRawContent = shallowRef('');
 
 const changeLogVisible = ref(false);
 const changeLogPrefix = ref('');
@@ -130,6 +143,16 @@ const importForm = reactive<Api.Admin.PreviewMobileSegmentImportPayload>({
   sourceName: '',
   sourceVersion: '',
   remark: ''
+});
+
+const importPreviewLineCount = computed(() => {
+  if (!importRawContent.value) return 0;
+  return importRawContent.value.split(/\r?\n/).filter(line => line.trim() !== '').length;
+});
+
+const importPreviewSnippet = computed(() => {
+  if (!importRawContent.value) return '';
+  return importRawContent.value.split(/\r?\n/).slice(0, 12).join('\n');
 });
 
 const carrierLabelMap: Record<string, string> = {
@@ -189,7 +212,6 @@ const segmentRules: Record<string, App.Global.FormRule[]> = {
 
 const importRules: Record<string, App.Global.FormRule[]> = {
   fileName: [{ required: true, message: '请选择 CSV 文件', trigger: 'blur' }],
-  content: [{ required: true, message: '请导入 CSV 内容', trigger: 'blur' }],
   sourceName: [{ required: true, message: '请输入来源名称', trigger: 'blur' }],
   sourceVersion: [{ required: true, message: '请输入来源版本', trigger: 'blur' }]
 };
@@ -486,9 +508,10 @@ async function openImportModal() {
   importForm.content = '';
   importForm.importMode = 'INCREMENTAL';
   importForm.deleteMissing = false;
-  importForm.sourceName = '';
-  importForm.sourceVersion = '';
+  importForm.sourceName = 'MANUAL_IMPORT';
+  importForm.sourceVersion = getDefaultImportSourceVersion();
   importForm.remark = '';
+  importRawContent.value = '';
   previewResult.value = {};
   importVisible.value = true;
   await nextTick();
@@ -508,16 +531,26 @@ async function handleImportFileChange(event: Event) {
   }
 
   importForm.fileName = file.name;
-  importForm.content = await file.text();
+  importRawContent.value = await file.text();
+  importForm.content = `已选择文件：${file.name}\n文件大小：${formatFileSize(file.size)}\n预估非空行数：${importPreviewLineCount.value}`;
   target.value = '';
 }
 
 async function handlePreviewImport() {
   await importFormRef.value?.validate();
+  if (!importRawContent.value) {
+    window.$message?.warning('请先选择 CSV 文件');
+    return;
+  }
   previewing.value = true;
 
   try {
-    previewResult.value = extractObjectData(await previewMobileSegmentImport(importForm));
+    previewResult.value = extractObjectData(
+      await previewMobileSegmentImport({
+        ...importForm,
+        content: importRawContent.value
+      })
+    );
     window.$message?.success('号段导入预检完成');
     await loadImportRows();
   } finally {
@@ -1034,7 +1067,10 @@ onMounted(async () => {
           <NInput v-model:value="importForm.remark" />
         </NFormItem>
         <NFormItem label="CSV 内容" path="content">
-          <NInput v-model:value="importForm.content" type="textarea" :autosize="{ minRows: 10, maxRows: 16 }" />
+          <NInput v-model:value="importForm.content" type="textarea" readonly :autosize="{ minRows: 3, maxRows: 4 }" />
+        </NFormItem>
+        <NFormItem label="CSV 预览">
+          <NInput :value="importPreviewSnippet" type="textarea" readonly placeholder="选择文件后显示前 12 行预览" :autosize="{ minRows: 10, maxRows: 16 }" />
         </NFormItem>
       </NForm>
 

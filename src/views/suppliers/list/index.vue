@@ -3,7 +3,7 @@ import { computed, h, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { NButton, NSpace, NTag } from 'naive-ui';
 import type { DataTableColumns, FormInst } from 'naive-ui';
-import { createSupplier, fetchSuppliers, updateSupplier } from '@/service/api';
+import { createSupplier, fetchSupplierDetail, fetchSuppliers, updateSupplier } from '@/service/api';
 import { extractListData, extractPagedData, getEntityId, normalizeQuery, toBoolean, toPrettyJson } from '@/utils/admin';
 
 const router = useRouter();
@@ -43,6 +43,8 @@ const formModel = reactive<Api.Admin.SaveSupplierPayload>({
   accessAccount: '',
   accessPassword: '',
   cooperationStatus: 'ACTIVE',
+  healthStatus: 'HEALTHY',
+  status: 'ACTIVE',
   supportsBalanceQuery: true,
   supportsRechargeRecords: false,
   supportsConsumptionLog: false,
@@ -64,6 +66,12 @@ const cooperationOptions = [
 ];
 
 const formCooperationOptions = cooperationOptions.filter(option => option.value);
+const formHealthOptions = healthOptions.filter(option => option.value);
+const formStatusOptions = [
+  { label: 'ACTIVE', value: 'ACTIVE' },
+  { label: 'INACTIVE', value: 'INACTIVE' },
+  { label: 'DISABLED', value: 'DISABLED' }
+];
 
 function asOptionalString(value: unknown) {
   if (value === undefined || value === null) {
@@ -87,6 +95,8 @@ function buildSupplierPayload(source: Api.Admin.RawRecord | Api.Admin.SaveSuppli
     accessAccount: asOptionalString(source.accessAccount),
     accessPassword: asOptionalString(source.accessPassword),
     cooperationStatus: asOptionalString(source.cooperationStatus),
+    healthStatus: asOptionalString(source.healthStatus),
+    status: asOptionalString(source.status),
     supportsBalanceQuery: toBoolean(source.supportsBalanceQuery),
     supportsRechargeRecords: toBoolean(source.supportsRechargeRecords),
     supportsConsumptionLog: toBoolean(source.supportsConsumptionLog),
@@ -143,13 +153,20 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
   },
   {
     key: 'contact',
-    title: '联系人',
-    width: 180,
+    title: '联系信息',
+    width: 220,
     render: row =>
       h('div', { class: 'flex flex-col gap-4px' }, [
         h('span', { class: 'text-13px text-#0f172a' }, String(row.contactName ?? '-')),
-        h('span', { class: 'text-12px text-#64748b' }, String(row.contactPhone ?? '-'))
+        h('span', { class: 'text-12px text-#64748b' }, String(row.contactPhone ?? '-')),
+        h('span', { class: 'text-12px text-#64748b' }, String(row.contactEmail ?? '-'))
       ])
+  },
+  {
+    key: 'accessAccount',
+    title: '接入账号',
+    width: 150,
+    render: row => String(row.accessAccount ?? '-')
   },
   {
     key: 'protocolType',
@@ -178,6 +195,15 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
     width: 120,
     render: row => {
       const status = String(row.healthStatus ?? '-');
+      return h(NTag, { size: 'small', type: getStatusType(status) }, { default: () => status });
+    }
+  },
+  {
+    key: 'status',
+    title: '主体状态',
+    width: 120,
+    render: row => {
+      const status = String(row.status ?? '-');
       return h(NTag, { size: 'small', type: getStatusType(status) }, { default: () => status });
     }
   },
@@ -267,6 +293,8 @@ function resetForm() {
   formModel.accessAccount = '';
   formModel.accessPassword = '';
   formModel.cooperationStatus = 'ACTIVE';
+  formModel.healthStatus = 'HEALTHY';
+  formModel.status = 'ACTIVE';
   formModel.supportsBalanceQuery = true;
   formModel.supportsRechargeRecords = false;
   formModel.supportsConsumptionLog = false;
@@ -285,6 +313,8 @@ function fillForm(row: Api.Admin.RawRecord) {
   formModel.accessAccount = String(row.accessAccount ?? '');
   formModel.accessPassword = String(row.accessPassword ?? '');
   formModel.cooperationStatus = String(row.cooperationStatus ?? 'ACTIVE');
+  formModel.healthStatus = String(row.healthStatus ?? 'HEALTHY');
+  formModel.status = String(row.status ?? 'ACTIVE');
   formModel.supportsBalanceQuery = toBoolean(row.supportsBalanceQuery);
   formModel.supportsRechargeRecords = toBoolean(row.supportsRechargeRecords);
   formModel.supportsConsumptionLog = toBoolean(row.supportsConsumptionLog);
@@ -298,9 +328,12 @@ function openCreate() {
   formVisible.value = true;
 }
 
-function openEdit(row: Api.Admin.RawRecord) {
-  fillForm(row);
-  editingSupplierId.value = getEntityId(row, ['supplierId', 'id', 'supplierCode']);
+async function openEdit(row: Api.Admin.RawRecord) {
+  const supplierEntityId = getEntityId(row, ['supplierId', 'id', 'supplierCode']);
+  editingSupplierId.value = supplierEntityId;
+  const detail = supplierEntityId ? await fetchSupplierDetail(supplierEntityId) : row;
+
+  fillForm(detail);
   formMode.value = 'edit';
   formVisible.value = true;
 }
@@ -375,8 +408,10 @@ async function handleToggleCooperation(row: Api.Admin.RawRecord, cooperationStat
   submitting.value = true;
 
   try {
+    const detail = await fetchSupplierDetail(supplierId);
+
     await updateSupplier(supplierId, {
-      ...buildSupplierPayload(row),
+      ...buildSupplierPayload(detail),
       cooperationStatus
     });
 
@@ -424,12 +459,12 @@ onMounted(() => {
 <template>
   <NSpace vertical :size="16">
     <NAlert type="info" :show-icon="false">
-      供应商管理已按桌面版 `api.json` 补齐为可新增、可查询、可编辑、可停用合作的主体档案管理页，
-      可录入供应商联系人、协议、接入账号、能力开关和合作状态等详细信息。
+      供应商管理已按新 <code>api.json</code> 补齐为可新增、可查询、可编辑、可暂停合作的主体档案管理页，
+      现在可录入供应商联系人、协议、接入账号、健康状态、主体状态和能力开关等详细信息。
     </NAlert>
 
     <NAlert type="warning" :show-icon="false">
-      当前 `api.json` 未提供供应商删除接口，因此本页严格使用“暂停合作/恢复合作”替代删除能力，不展示不可调用的假删除按钮。
+      当前后端未提供供应商删除接口，因此本页严格使用“暂停合作/恢复合作”替代删除能力，不展示不可调用的删除按钮。
     </NAlert>
 
     <NCard :bordered="false" class="card-wrapper">
@@ -462,7 +497,7 @@ onMounted(() => {
         :data="rows"
         :loading="loading"
         remote
-        :scroll-x="1750"
+        :scroll-x="1880"
         :row-key="row => getEntityId(row, ['supplierId', 'id', 'supplierCode'])"
       />
       <div class="mt-16px flex justify-end">
@@ -526,6 +561,16 @@ onMounted(() => {
               <NSelect v-model:value="formModel.cooperationStatus" :options="formCooperationOptions" />
             </NFormItem>
           </NGi>
+          <NGi>
+            <NFormItem label="健康状态">
+              <NSelect v-model:value="formModel.healthStatus" :options="formHealthOptions" />
+            </NFormItem>
+          </NGi>
+          <NGi>
+            <NFormItem label="主体状态">
+              <NSelect v-model:value="formModel.status" :options="formStatusOptions" />
+            </NFormItem>
+          </NGi>
           <NGi span="2">
             <NFormItem label="基础地址">
               <NInput v-model:value="formModel.baseUrl" placeholder="供应商接口网关或服务地址" />
@@ -542,22 +587,22 @@ onMounted(() => {
                 v-model:value="formModel.accessPassword"
                 type="password"
                 show-password-on="click"
-                placeholder="最少 6 位"
+                placeholder="至少 6 位"
               />
             </NFormItem>
           </NGi>
           <NGi span="2">
-            <NFormItem label="余额查询">
+            <NFormItem label="支持余额查询">
               <NSwitch v-model:value="formModel.supportsBalanceQuery" />
             </NFormItem>
           </NGi>
           <NGi span="2">
-            <NFormItem label="充值记录">
+            <NFormItem label="支持充值记录">
               <NSwitch v-model:value="formModel.supportsRechargeRecords" />
             </NFormItem>
           </NGi>
           <NGi span="2">
-            <NFormItem label="消费日志">
+            <NFormItem label="支持消费日志">
               <NSwitch v-model:value="formModel.supportsConsumptionLog" />
             </NFormItem>
           </NGi>

@@ -14,8 +14,10 @@ type RoleCreateFormModel = {
   dataScope: Api.Admin.DataScope;
 };
 
+type RoleTemplateKey = 'superAdmin' | 'ops' | 'finance' | 'risk' | 'customerService' | 'support';
+
 type RoleTemplate = {
-  key: 'support' | 'customerService';
+  key: RoleTemplateKey;
   title: string;
   roleCode: string;
   roleName: string;
@@ -63,13 +65,65 @@ const formModel = reactive<RoleCreateFormModel>({
 
 const roleTemplates: RoleTemplate[] = [
   {
+    key: 'superAdmin',
+    title: '超级管理员',
+    roleCode: 'SUPER_ADMIN',
+    roleName: '超级管理员',
+    platformLabel: '权限平台',
+    positionLabel: '全局管理',
+    description: '统一管理角色、菜单、后台用户、系统配置及各运营平台的全量能力。',
+    dataScope: 'ALL',
+    menuCodes: ['home', 'access_roles', 'access_users'],
+    permissionCodes: [],
+    aliasCodes: ['SUPER_ADMIN', 'R_SUPER']
+  },
+  {
+    key: 'ops',
+    title: '运营管理',
+    roleCode: 'OPS',
+    roleName: '运营管理',
+    platformLabel: '运营平台',
+    positionLabel: '日常运营',
+    description: '负责商品、供应商、渠道、订单、通知、投诉等核心业务运营管理。',
+    dataScope: 'ALL',
+    menuCodes: ['channels_list', 'suppliers_list', 'products_list', 'orders_list', 'complaints_list'],
+    permissionCodes: [],
+    aliasCodes: ['OPS']
+  },
+  {
+    key: 'finance',
+    title: '财务角色',
+    roleCode: 'FINANCE',
+    roleName: '财务管理',
+    platformLabel: '财务平台',
+    positionLabel: '资金结算',
+    description: '负责账户、台账、账务流水、对账差异和结算相关运营。',
+    dataScope: 'ALL',
+    menuCodes: ['finance_accounts', 'finance_ledger'],
+    permissionCodes: [],
+    aliasCodes: ['FINANCE']
+  },
+  {
+    key: 'risk',
+    title: '风控角色',
+    roleCode: 'RISK',
+    roleName: '风控管理',
+    platformLabel: '风控平台',
+    positionLabel: '交易风控',
+    description: '负责风控规则、黑白名单、风险决策和异常订单治理。',
+    dataScope: 'ALL',
+    menuCodes: ['risk_rules', 'risk_black-white', 'risk_decisions'],
+    permissionCodes: [],
+    aliasCodes: ['RISK']
+  },
+  {
     key: 'customerService',
-    title: '平台客服角色',
+    title: '平台客服',
     roleCode: 'CUSTOMER_SERVICE',
     roleName: '平台客服',
     platformLabel: '平台客服',
-    positionLabel: '客服/售后处理',
-    description: '负责订单查询、通知跟进和售后投诉处理，不再复用技术支持角色。',
+    positionLabel: '客服与售后',
+    description: '负责订单跟进、投诉工单、售后处理与用户沟通，不再混用技术支持角色。',
     dataScope: 'SELF_ASSIGNED',
     menuCodes: ['orders_list', 'complaints_list', 'notifications_tasks', 'notifications_dead-letters'],
     permissionCodes: [],
@@ -77,12 +131,12 @@ const roleTemplates: RoleTemplate[] = [
   },
   {
     key: 'support',
-    title: '技术支持角色',
+    title: '技术支持',
     roleCode: 'SUPPORT',
     roleName: '技术支持',
     platformLabel: '技术支持平台',
-    positionLabel: '运维/排障支持',
-    description: '负责系统运维、异步任务重试、日志排障和审计分析，不承担客服售后职责。',
+    positionLabel: '运维与排障',
+    description: '负责系统运维、任务重试、日志审计、故障排查，不承担客服售后职责。',
     dataScope: 'ALL',
     menuCodes: ['ops_jobs', 'ops_mobile-segments', 'ops_audit-logs', 'ops_login-logs'],
     permissionCodes: [],
@@ -117,6 +171,10 @@ function getRoleName(row: Api.Admin.RawRecord) {
   return String(pickValue(row, ['roleName', 'name'], '') || '').trim();
 }
 
+function getArrayValues(row: Api.Admin.RawRecord, key: string) {
+  return Array.isArray(row[key]) ? row[key].map((item: unknown) => String(item)) : [];
+}
+
 function getRoleProfile(row: Api.Admin.RawRecord): RoleProfile {
   const roleCode = getRoleCode(row);
   const roleName = getRoleName(row);
@@ -149,7 +207,7 @@ function getRoleProfile(row: Api.Admin.RawRecord): RoleProfile {
     return {
       platformLabel: '风控平台',
       positionLabel: '风控专员',
-      description: '负责风控规则、黑白名单和交易风险决策。'
+      description: '负责风控规则、黑白名单和交易风控决策。'
     };
   }
 
@@ -157,7 +215,7 @@ function getRoleProfile(row: Api.Admin.RawRecord): RoleProfile {
     return {
       platformLabel: '技术支持平台',
       positionLabel: '技术支持',
-      description: '负责系统运维、任务重试、日志排查和技术支持。'
+      description: '负责系统运维、异步任务重试、日志审计和技术排障。'
     };
   }
 
@@ -189,12 +247,12 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
   {
     key: 'roleCode',
     title: '角色编码',
-    render: row => pickValue(row, ['roleCode', 'code'])
+    render: row => pickValue(row, ['roleCode', 'code'], '-')
   },
   {
     key: 'roleName',
     title: '角色名称',
-    render: row => pickValue(row, ['roleName', 'name'])
+    render: row => pickValue(row, ['roleName', 'name'], '-')
   },
   {
     key: 'platformLabel',
@@ -238,17 +296,17 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
   {
     key: 'dataScope',
     title: '数据范围',
-    render: row => pickValue(row, ['dataScope'])
+    render: row => pickValue(row, ['dataScope'], '-')
   },
   {
     key: 'createdAt',
     title: '创建时间',
-    render: row => pickValue(row, ['createdAt', 'createTime'])
+    render: row => pickValue(row, ['createdAt', 'createTime'], '-')
   },
   {
     key: 'updatedAt',
     title: '更新时间',
-    render: row => pickValue(row, ['updatedAt', 'updateTime'])
+    render: row => pickValue(row, ['updatedAt', 'updateTime'], '-')
   },
   {
     key: 'actions',
@@ -402,8 +460,11 @@ onMounted(() => {
 <template>
   <NSpace vertical :size="16">
     <NAlert type="info" :show-icon="false">
-      根据桌面版 `api.json` 与需求文档，`SUPPORT` 在统一管理平台中代表“技术支持”，不再表示客服角色。
-      平台客服需要作为独立后台角色创建，建议使用 `CUSTOMER_SERVICE` 作为标准角色编码。
+      角色管理已按新 <code>api.json</code> 修正。当前后端只开放了角色列表、角色详情和新增角色接口，因此前端恢复“角色列表”并保留真实可用能力，不再伪造编辑和删除。
+    </NAlert>
+
+    <NAlert type="warning" :show-icon="false">
+      <code>SUPPORT</code> 明确代表“技术支持”，<code>CUSTOMER_SERVICE</code> 明确代表“平台客服”。两者已在模板、归属平台和职责说明中拆分展示。
     </NAlert>
 
     <NCard title="内置角色模板" :bordered="false" class="card-wrapper">
@@ -431,10 +492,7 @@ onMounted(() => {
               <NTag size="small">数据范围：{{ template.dataScope }}</NTag>
             </div>
 
-            <div class="text-13px text-#334155">
-              识别别名：{{ template.aliasCodes.join(' / ') }}
-            </div>
-
+            <div class="text-13px text-#334155">识别别名：{{ template.aliasCodes.join(' / ') }}</div>
             <div class="text-13px text-#334155">
               推荐菜单码：{{ template.menuCodes.join('、') || '按实际菜单补充' }}
             </div>
@@ -552,20 +610,24 @@ onMounted(() => {
           <NGi>
             <NCard title="权限码" :bordered="false" class="card-wrapper">
               <div class="flex flex-wrap gap-8px">
-                <NTag v-for="code in detailRecord.permissionCodes || []" :key="code" type="primary" size="small">
+                <NTag v-for="code in getArrayValues(detailRecord, 'permissionCodes')" :key="code" type="primary" size="small">
                   {{ code }}
                 </NTag>
-                <span v-if="!(detailRecord.permissionCodes || []).length" class="text-13px text-#64748b">暂无权限码</span>
+                <span v-if="!getArrayValues(detailRecord, 'permissionCodes').length" class="text-13px text-#64748b">
+                  暂无权限码
+                </span>
               </div>
             </NCard>
           </NGi>
           <NGi>
             <NCard title="菜单码" :bordered="false" class="card-wrapper">
               <div class="flex flex-wrap gap-8px">
-                <NTag v-for="code in detailRecord.menuCodes || []" :key="code" type="success" size="small">
+                <NTag v-for="code in getArrayValues(detailRecord, 'menuCodes')" :key="code" type="success" size="small">
                   {{ code }}
                 </NTag>
-                <span v-if="!(detailRecord.menuCodes || []).length" class="text-13px text-#64748b">暂无菜单码</span>
+                <span v-if="!getArrayValues(detailRecord, 'menuCodes').length" class="text-13px text-#64748b">
+                  暂无菜单码
+                </span>
               </div>
             </NCard>
           </NGi>

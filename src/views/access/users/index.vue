@@ -5,6 +5,7 @@ import type { DataTableColumns, FormInst, SelectOption } from 'naive-ui';
 import {
   assignAdminUserRole,
   createAdminUser,
+  fetchAdminUserDetail,
   fetchAdminRoles,
   fetchAdminUsers,
   updateAdminUserStatus
@@ -20,8 +21,11 @@ const submitting = ref(false);
 const assigningUserId = ref('');
 const statusChangingUserId = ref('');
 const createVisible = ref(false);
+const detailVisible = ref(false);
+const detailLoading = ref(false);
 const rawVisible = ref(false);
 const rawRecord = ref<Api.Admin.RawRecord>({});
+const detailRecord = ref<Api.Admin.RawRecord>({});
 const formRef = ref<FormInst | null>(null);
 
 const rows = ref<Api.Admin.RawRecord[]>([]);
@@ -61,22 +65,21 @@ const createStatusOptions = [
   { label: 'DISABLED', value: 'DISABLED' }
 ];
 
-const roleOptions = computed<SelectOption[]>(
-  () =>
-    roleRows.value
-      .map(role => {
-        const roleCode = pickValue(role, ['roleCode'], '');
+const roleOptions = computed<SelectOption[]>(() =>
+  roleRows.value
+    .map(role => {
+      const roleCode = pickValue(role, ['roleCode'], '');
 
-        if (!roleCode) {
-          return null;
-        }
+      if (!roleCode) {
+        return null;
+      }
 
-        return {
-          label: `${pickValue(role, ['roleName'], roleCode)} (${roleCode})`,
-          value: roleCode
-        } satisfies SelectOption;
-      })
-      .filter(Boolean) as SelectOption[]
+      return {
+        label: `${pickValue(role, ['roleName'], roleCode)} (${roleCode})`,
+        value: roleCode
+      } satisfies SelectOption;
+    })
+    .filter(Boolean) as SelectOption[]
 );
 
 function getRoleCodes(row: Api.Admin.RawRecord) {
@@ -93,6 +96,10 @@ function getRoleCodes(row: Api.Admin.RawRecord) {
 
 function getPrimaryRoleCode(row: Api.Admin.RawRecord) {
   return pickValue(row, ['primaryRoleCode'], '') || getRoleCodes(row)[0] || '';
+}
+
+function getArrayValues(row: Api.Admin.RawRecord, key: string) {
+  return Array.isArray(row[key]) ? row[key].map((item: unknown) => String(item)) : [];
 }
 
 function syncRoleDrafts() {
@@ -176,7 +183,7 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
   },
   {
     key: 'subsystems',
-    title: '可进入子系统',
+    title: '可进入平台',
     render: row => {
       const subsystemLabels = getSubsystemLabelsByRoleCodes(getRoleCodes(row));
 
@@ -198,17 +205,17 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
   {
     key: 'dataScope',
     title: '数据范围',
-    render: row => pickValue(row, ['dataScope'])
+    render: row => pickValue(row, ['dataScope'], '-')
   },
   {
     key: 'mobile',
     title: '手机号',
-    render: row => pickValue(row, ['mobile1', 'mobile'])
+    render: row => pickValue(row, ['mobile1', 'mobile'], '-')
   },
   {
     key: 'email',
     title: '邮箱',
-    render: row => pickValue(row, ['email'])
+    render: row => pickValue(row, ['email'], '-')
   },
   {
     key: 'status',
@@ -223,7 +230,12 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
   {
     key: 'createdAt',
     title: '创建时间',
-    render: row => pickValue(row, ['createdAt', 'createTime', 'gmtCreate'])
+    render: row => pickValue(row, ['createdAt', 'createTime', 'gmtCreate'], '-')
+  },
+  {
+    key: 'lastLoginAt',
+    title: '最近登录',
+    render: row => pickValue(row, ['lastLoginAt'], '-')
   },
   {
     key: 'assignRole',
@@ -266,7 +278,7 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
   {
     key: 'userStatusAction',
     title: '账号状态',
-    width: 150,
+    width: 140,
     render: row => {
       const userId = getEntityId(row, ['userId', 'id']);
       const currentStatus = pickValue(row, ['status'], 'ACTIVE') as Api.Admin.UserStatus;
@@ -289,16 +301,29 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
   {
     key: 'actions',
     title: '操作',
+    width: 210,
     render: row =>
-      h(
-        NButton,
-        {
-          size: 'small',
-          quaternary: true,
-          onClick: () => openRaw(row)
-        },
-        { default: () => '查看原始数据' }
-      )
+      h(NSpace, { size: 8, wrap: false }, () => [
+        h(
+          NButton,
+          {
+            size: 'small',
+            type: 'primary',
+            secondary: true,
+            onClick: () => openDetail(row)
+          },
+          { default: () => '详情' }
+        ),
+        h(
+          NButton,
+          {
+            size: 'small',
+            quaternary: true,
+            onClick: () => openRaw(row)
+          },
+          { default: () => '原始数据' }
+        )
+      ])
   }
 ]);
 
@@ -337,6 +362,25 @@ function openCreate() {
 function openRaw(row: Api.Admin.RawRecord) {
   rawRecord.value = row;
   rawVisible.value = true;
+}
+
+async function openDetail(row: Api.Admin.RawRecord) {
+  const userId = getEntityId(row, ['userId', 'id']);
+
+  if (!userId) {
+    detailRecord.value = row;
+    detailVisible.value = true;
+    return;
+  }
+
+  detailVisible.value = true;
+  detailLoading.value = true;
+
+  try {
+    detailRecord.value = await fetchAdminUserDetail(userId);
+  } finally {
+    detailLoading.value = false;
+  }
 }
 
 function buildCreatedUserRecord(userId: string) {
@@ -378,6 +422,7 @@ function prependCreatedUser(row: Api.Admin.RawRecord) {
 
     return currentUserId === nextUserId || currentUsername === nextUsername;
   });
+
   const filteredRows = rows.value.filter(item => {
     const currentUserId = getEntityId(item, ['userId', 'id']);
     const currentUsername = pickValue(item, ['username'], '').toLowerCase();
@@ -537,7 +582,8 @@ onMounted(async () => {
 <template>
   <NSpace vertical :size="16">
     <NAlert type="info" :show-icon="false">
-      当前后台用户模型已按新 `api.json` 对齐，支持主角色、权限码、菜单码、数据范围的返回展示，并支持账号启用/禁用。
+      当前后台用户页严格按新 <code>api.json</code> 对齐，只提供接口真实存在的能力：新增、列表、详情、启用/禁用、分配角色。
+      后端目前没有“修改用户资料”与“删除用户”接口，因此页面不再伪造这些操作。
     </NAlert>
 
     <NCard :bordered="false" class="card-wrapper">
@@ -637,12 +683,12 @@ onMounted(async () => {
             </NFormItem>
           </NGi>
           <NGi>
-            <NFormItem label="QQ号">
+            <NFormItem label="QQ">
               <NInput v-model:value="formModel.qq" />
             </NFormItem>
           </NGi>
           <NGi span="2">
-            <NFormItem label="备注信息">
+            <NFormItem label="备注">
               <NInput v-model:value="formModel.remark" type="textarea" :autosize="{ minRows: 3, maxRows: 5 }" />
             </NFormItem>
           </NGi>
@@ -654,6 +700,94 @@ onMounted(async () => {
           <NButton type="primary" :loading="submitting" @click="submitCreate">提交</NButton>
         </div>
       </template>
+    </NModal>
+
+    <NModal v-model:show="detailVisible" preset="card" title="后台用户详情" class="w-860px">
+      <NSpin :show="detailLoading">
+        <NDescriptions bordered :column="2" label-placement="left">
+          <NDescriptionsItem label="用户ID">
+            {{ pickValue(detailRecord, ['id', 'userId'], '-') }}
+          </NDescriptionsItem>
+          <NDescriptionsItem label="用户名">
+            {{ pickValue(detailRecord, ['username'], '-') }}
+          </NDescriptionsItem>
+          <NDescriptionsItem label="显示名">
+            {{ pickValue(detailRecord, ['displayName'], '-') }}
+          </NDescriptionsItem>
+          <NDescriptionsItem label="账号状态">
+            {{ pickValue(detailRecord, ['status'], '-') }}
+          </NDescriptionsItem>
+          <NDescriptionsItem label="主角色">
+            {{ pickValue(detailRecord, ['primaryRoleCode'], '-') }}
+          </NDescriptionsItem>
+          <NDescriptionsItem label="数据范围">
+            {{ pickValue(detailRecord, ['dataScope'], '-') }}
+          </NDescriptionsItem>
+          <NDescriptionsItem label="邮箱">
+            {{ pickValue(detailRecord, ['email'], '-') }}
+          </NDescriptionsItem>
+          <NDescriptionsItem label="手机号1">
+            {{ pickValue(detailRecord, ['mobile1', 'mobile'], '-') }}
+          </NDescriptionsItem>
+          <NDescriptionsItem label="手机号2">
+            {{ pickValue(detailRecord, ['mobile2'], '-') }}
+          </NDescriptionsItem>
+          <NDescriptionsItem label="微信">
+            {{ pickValue(detailRecord, ['wechat'], '-') }}
+          </NDescriptionsItem>
+          <NDescriptionsItem label="QQ">
+            {{ pickValue(detailRecord, ['qq'], '-') }}
+          </NDescriptionsItem>
+          <NDescriptionsItem label="最近登录">
+            {{ pickValue(detailRecord, ['lastLoginAt'], '-') }}
+          </NDescriptionsItem>
+          <NDescriptionsItem label="失败次数">
+            {{ pickValue(detailRecord, ['failedLoginAttempts'], '-') }}
+          </NDescriptionsItem>
+          <NDescriptionsItem label="锁定至">
+            {{ pickValue(detailRecord, ['lockedUntil'], '-') }}
+          </NDescriptionsItem>
+          <NDescriptionsItem label="创建时间">
+            {{ pickValue(detailRecord, ['createdAt'], '-') }}
+          </NDescriptionsItem>
+          <NDescriptionsItem label="更新时间">
+            {{ pickValue(detailRecord, ['updatedAt'], '-') }}
+          </NDescriptionsItem>
+        </NDescriptions>
+
+        <NGrid cols="1 l:2" responsive="screen" :x-gap="16" :y-gap="16" class="mt-16px">
+          <NGi>
+            <NCard title="角色列表" :bordered="false" class="card-wrapper">
+              <div class="flex flex-wrap gap-8px">
+                <NTag v-for="roleCode in getArrayValues(detailRecord, 'roleCodes')" :key="roleCode" type="primary" size="small">
+                  {{ roleCode }}
+                </NTag>
+                <span v-if="!getArrayValues(detailRecord, 'roleCodes').length" class="text-13px text-#64748b">暂无角色</span>
+              </div>
+            </NCard>
+          </NGi>
+          <NGi>
+            <NCard title="权限与菜单" :bordered="false" class="card-wrapper">
+              <div class="text-13px text-#64748b">权限码：{{ getArrayValues(detailRecord, 'permissionCodes').length }}</div>
+              <div class="mt-8px flex flex-wrap gap-8px">
+                <NTag v-for="code in getArrayValues(detailRecord, 'permissionCodes')" :key="code" type="success" size="small">
+                  {{ code }}
+                </NTag>
+              </div>
+              <div class="mt-12px text-13px text-#64748b">菜单码：{{ getArrayValues(detailRecord, 'menuCodes').length }}</div>
+              <div class="mt-8px flex flex-wrap gap-8px">
+                <NTag v-for="code in getArrayValues(detailRecord, 'menuCodes')" :key="code" size="small">
+                  {{ code }}
+                </NTag>
+              </div>
+            </NCard>
+          </NGi>
+        </NGrid>
+
+        <NCard title="备注" :bordered="false" class="card-wrapper mt-16px">
+          <div class="text-14px text-#334155">{{ pickValue(detailRecord, ['remark'], '-') }}</div>
+        </NCard>
+      </NSpin>
     </NModal>
 
     <NModal v-model:show="rawVisible" preset="card" title="用户原始数据" class="w-760px">

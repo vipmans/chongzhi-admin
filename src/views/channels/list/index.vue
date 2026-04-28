@@ -3,7 +3,7 @@ import { computed, h, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { NButton, NSpace, NTag } from 'naive-ui';
 import type { DataTableColumns, FormInst } from 'naive-ui';
-import { createChannel, fetchChannels, updateChannel } from '@/service/api';
+import { createChannel, fetchChannelDetail, fetchChannels, updateChannel } from '@/service/api';
 import { extractPagedData, getEntityId, normalizeQuery, pickValue, toBoolean, toPrettyJson } from '@/utils/admin';
 
 const router = useRouter();
@@ -132,29 +132,36 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
     key: 'channelCode',
     title: '渠道编码',
     width: 150,
-    render: row => pickValue(row, ['channelCode', 'code'])
+    render: row => pickValue(row, ['channelCode', 'code'], '-')
   },
   {
     key: 'channelName',
     title: '渠道名称',
     width: 180,
-    render: row => pickValue(row, ['channelName', 'name'])
+    render: row => pickValue(row, ['channelName', 'name'], '-')
   },
   {
     key: 'channelType',
     title: '渠道类型',
     width: 120,
-    render: row => pickValue(row, ['channelType', 'type'])
+    render: row => pickValue(row, ['channelType', 'type'], '-')
   },
   {
     key: 'contact',
-    title: '联系人',
-    width: 180,
+    title: '联系信息',
+    width: 220,
     render: row =>
       h('div', { class: 'flex flex-col gap-4px' }, [
-        h('span', { class: 'text-13px text-#0f172a' }, pickValue(row, ['contactName'])),
-        h('span', { class: 'text-12px text-#64748b' }, pickValue(row, ['contactPhone']))
+        h('span', { class: 'text-13px text-#0f172a' }, pickValue(row, ['contactName'], '-')),
+        h('span', { class: 'text-12px text-#64748b' }, pickValue(row, ['contactPhone'], '-')),
+        h('span', { class: 'text-12px text-#64748b' }, pickValue(row, ['contactEmail'], '-'))
       ])
+  },
+  {
+    key: 'accessAccount',
+    title: '接口接入账号',
+    width: 160,
+    render: row => pickValue(row, ['accessAccount'], '-')
   },
   {
     key: 'portalStatus',
@@ -187,13 +194,13 @@ const columns = computed<DataTableColumns<Api.Admin.RawRecord>>(() => [
     key: 'settlementMode',
     title: '结算模式',
     width: 120,
-    render: row => pickValue(row, ['settlementMode'])
+    render: row => pickValue(row, ['settlementMode'], '-')
   },
   {
     key: 'updatedAt',
     title: '更新时间',
     width: 180,
-    render: row => pickValue(row, ['updatedAt', 'createdAt'])
+    render: row => pickValue(row, ['updatedAt', 'createdAt'], '-')
   },
   {
     key: 'actions',
@@ -301,9 +308,13 @@ function openCreate() {
   formVisible.value = true;
 }
 
-function openEdit(row: Api.Admin.RawRecord) {
-  fillForm(row);
-  editingChannelId.value = getEntityId(row, ['channelId', 'id', 'channelCode']);
+async function openEdit(row: Api.Admin.RawRecord) {
+  const channelId = getEntityId(row, ['channelId', 'id', 'channelCode']);
+  editingChannelId.value = channelId;
+
+  const detail = channelId ? await fetchChannelDetail(channelId) : row;
+
+  fillForm(detail);
   formMode.value = 'edit';
   formVisible.value = true;
 }
@@ -368,8 +379,10 @@ async function handleToggleStatus(row: Api.Admin.RawRecord, status: string) {
   submitting.value = true;
 
   try {
+    const detail = await fetchChannelDetail(channelId);
+
     await updateChannel(channelId, {
-      ...buildChannelPayload(row),
+      ...buildChannelPayload(detail),
       status
     });
 
@@ -395,10 +408,10 @@ async function submitForm() {
 
     if (formMode.value === 'create') {
       await createChannel(payload);
-      window.$message?.success('渠道商主体创建成功');
+      window.$message?.success('渠道主体创建成功');
     } else {
       await updateChannel(editingChannelId.value, payload);
-      window.$message?.success('渠道商主体更新成功');
+      window.$message?.success('渠道主体更新成功');
     }
 
     formVisible.value = false;
@@ -417,12 +430,12 @@ onMounted(() => {
 <template>
   <NSpace vertical :size="16">
     <NAlert type="info" :show-icon="false">
-      渠道商主体档案已按桌面版 `api.json` 对齐为可新增、可查询、可编辑、可停用管理。
-      这里录入的是渠道商基础资料、接口接入信息和合作状态；外部渠道登录使用的“渠道管理平台账号/密码”请进入详情页的“门户账号”模块开通和审核，不属于公司内部后台账号。
+      渠道商主体档案已按新 <code>api.json</code> 对齐为可新增、可查询、可编辑、可停用的管理页面。
+      这里维护的是渠道主体资料、接口接入账号和合作状态；外部渠道登录使用的渠道平台账号，请在详情页“门户账号”模块单独开通。
     </NAlert>
 
     <NAlert type="warning" :show-icon="false">
-      当前 `api.json` 未提供渠道商删除接口，因此本页严格按接口能力提供“停用/启用”替代删除操作，不伪造不可用按钮。
+      当前后端未提供渠道商删除接口，因此本页严格按接口能力提供“停用/启用”替代删除，不展示不可调用的假删除按钮。
     </NAlert>
 
     <NCard :bordered="false" class="card-wrapper">
@@ -462,7 +475,7 @@ onMounted(() => {
         :data="rows"
         :loading="loading"
         remote
-        :scroll-x="1650"
+        :scroll-x="1780"
         :row-key="row => getEntityId(row, ['channelId', 'id', 'channelCode'])"
       />
       <div class="mt-16px flex justify-end">
@@ -532,17 +545,17 @@ onMounted(() => {
             </NFormItem>
           </NGi>
           <NGi>
-            <NFormItem label="接入账号">
+            <NFormItem label="接口接入账号">
               <NInput v-model:value="formModel.accessAccount" placeholder="渠道接口接入账号，不是内部员工账号" />
             </NFormItem>
           </NGi>
           <NGi>
-            <NFormItem label="接入密码">
+            <NFormItem label="接口接入密码">
               <NInput
                 v-model:value="formModel.accessPassword"
                 type="password"
                 show-password-on="click"
-                placeholder="最少 6 位，供接口接入或外部接入使用"
+                placeholder="至少 6 位，用于接口接入"
               />
             </NFormItem>
           </NGi>

@@ -1,0 +1,17 @@
+{
+  "sourceFile": "C:\\Users\\nianx\\chongzhi-ops\\data\\mobile-prefixes.source.csv",
+  "totalRows": 515981,
+  "uniquePrefixes": 515729,
+  "importableRows": 515729,
+  "conflictPrefixCount": 28,
+  "conflictRowCount": 84,
+  "skippedInvalidRows": 0,
+  "carrierDistribution": {
+    "CBN": 9979,
+    "CMCC": 230647,
+    "CTCC": 108433,
+    "CTCC_SAT": 2012,
+    "CUCC": 120199,
+    "MVNO": 44459
+  }
+}

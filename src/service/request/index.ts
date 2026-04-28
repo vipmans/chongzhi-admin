@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/modules/auth';
 import { localStg } from '@/utils/storage';
 import { getServiceBaseURL } from '@/utils/service';
 import { $t } from '@/locales';
-import { getAuthorization, getResponseMsg, handleExpiredRequest, showErrorMsg } from './shared';
+import { getAuthorization, getResponseMsg, handleExpiredRequest, isExpiredTokenMessage, showErrorMsg } from './shared';
 import type { RequestInstanceState } from './type';
 
 const isHttpProxy = import.meta.env.DEV && import.meta.env.VITE_HTTP_PROXY === 'Y';
@@ -84,7 +84,7 @@ export const request = createFlatRequest(
       // when the backend response code is in `expiredTokenCodes`, it means the token is expired, and refresh token
       // the api `refreshToken` can not return error code in `expiredTokenCodes`, otherwise it will be a dead loop, should return `logoutCodes` or `modalLogoutCodes`
       const expiredTokenCodes = import.meta.env.VITE_SERVICE_EXPIRED_TOKEN_CODES?.split(',') || [];
-      if (expiredTokenCodes.includes(responseCode)) {
+      if (expiredTokenCodes.includes(responseCode) || isExpiredTokenMessage(responseMsg)) {
         const success = await handleExpiredRequest(request.state);
         if (success) {
           const Authorization = getAuthorization();
@@ -120,7 +120,7 @@ export const request = createFlatRequest(
 
       // when the token is expired, refresh token and retry request, so no need to show error message
       const expiredTokenCodes = import.meta.env.VITE_SERVICE_EXPIRED_TOKEN_CODES?.split(',') || [];
-      if (expiredTokenCodes.includes(backendErrorCode)) {
+      if (expiredTokenCodes.includes(backendErrorCode) || isExpiredTokenMessage(message)) {
         return;
       }
 

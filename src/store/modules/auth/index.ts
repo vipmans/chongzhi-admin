@@ -17,9 +17,15 @@ import {
   getLoginPrimaryRoleCode,
   getLoginRoleCodes,
   getLoginUsername,
-  getToken
+  getToken,
+  markAuthActivity,
+  persistLoginTokenStorage
 } from './shared';
-import { requestLogout } from '@/service/request/shared';
+import { refreshAccessTokenIfNeeded, requestLogout } from '@/service/request/shared';
+
+const SESSION_REFRESH_INTERVAL_MS = 60 * 1000;
+const SESSION_REFRESH_AHEAD_MS = 10 * 60 * 1000;
+const ACTIVITY_REFRESH_THROTTLE_MS = 30 * 1000;
 
 export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
   const routeStore = useRouteStore();
@@ -38,11 +44,120 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     dataScope: null
   });
 
+  let sessionKeepAliveTimer: number | null = null;
+  let activityListenersBound = false;
+  let lastActivityRefreshAt = 0;
+
   /** Is login */
   const isLogin = computed(() => Boolean(token.value));
 
+  function clearSessionKeepAlive() {
+    if (sessionKeepAliveTimer !== null) {
+      window.clearInterval(sessionKeepAliveTimer);
+      sessionKeepAliveTimer = null;
+    }
+  }
+
+  function removeActivityListeners() {
+    if (!activityListenersBound) {
+      return;
+    }
+
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    window.removeEventListener('focus', handleWindowFocus);
+    window.removeEventListener('click', handleUserActivity);
+    window.removeEventListener('keydown', handleUserActivity);
+    window.removeEventListener('mousemove', handleUserActivity);
+    window.removeEventListener('scroll', handleUserActivity);
+    activityListenersBound = false;
+  }
+
+  async function keepSessionAlive(force = false) {
+    if (!token.value && !getToken()) {
+      return false;
+    }
+
+    const success = await refreshAccessTokenIfNeeded({
+      force,
+      thresholdMs: SESSION_REFRESH_AHEAD_MS
+    });
+
+    if (success) {
+      markAuthActivity();
+      token.value = getToken();
+    }
+
+    return success;
+  }
+
+  function handleUserActivity() {
+    if (!isLogin.value) {
+      return;
+    }
+
+    markAuthActivity();
+
+    const now = Date.now();
+
+    if (now - lastActivityRefreshAt < ACTIVITY_REFRESH_THROTTLE_MS) {
+      return;
+    }
+
+    lastActivityRefreshAt = now;
+    void keepSessionAlive(false);
+  }
+
+  function handleVisibilityChange() {
+    if (!isLogin.value || document.visibilityState !== 'visible') {
+      return;
+    }
+
+    void keepSessionAlive(false);
+  }
+
+  function handleWindowFocus() {
+    if (!isLogin.value) {
+      return;
+    }
+
+    void keepSessionAlive(false);
+  }
+
+  function bindActivityListeners() {
+    if (activityListenersBound) {
+      return;
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('click', handleUserActivity, { passive: true });
+    window.addEventListener('keydown', handleUserActivity);
+    window.addEventListener('mousemove', handleUserActivity, { passive: true });
+    window.addEventListener('scroll', handleUserActivity, { passive: true });
+    activityListenersBound = true;
+  }
+
+  function setupSessionKeepAlive() {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    bindActivityListeners();
+    clearSessionKeepAlive();
+
+    sessionKeepAliveTimer = window.setInterval(() => {
+      if (!isLogin.value || document.visibilityState !== 'visible') {
+        return;
+      }
+
+      void keepSessionAlive(false);
+    }, SESSION_REFRESH_INTERVAL_MS);
+  }
+
   /** Reset auth store */
   async function resetStore() {
+    clearSessionKeepAlive();
+    removeActivityListeners();
     clearAuthStorage();
     token.value = '';
     userInfo.userName = '';
@@ -121,8 +236,7 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     userInfo.menuCodes = menuCodes;
     userInfo.dataScope = dataScope;
 
-    localStg.set('token', accessToken);
-    localStg.set('refreshToken', loginToken.refreshToken);
+    persistLoginTokenStorage(loginToken);
     localStg.set('loginUsername', loginUsername);
     localStg.set('loginDisplayName', displayName);
     localStg.set('loginPrimaryRoleCode', primaryRoleCode);
@@ -132,6 +246,9 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     localStg.set('loginDataScope', dataScope);
 
     tabStore.clearTabs();
+    setupSessionKeepAlive();
+    void keepSessionAlive(false);
+
     return true;
   }
 
@@ -151,13 +268,21 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     userInfo.menuCodes = getLoginMenuCodes();
     userInfo.dataScope = getLoginDataScope();
 
+    setupSessionKeepAlive();
+    await keepSessionAlive(false);
+
     if (userInfo.userName && userInfo.roleCodes.length) {
       return;
     }
 
     const { data: loginUser, error } = await fetchAuthMe();
 
-    if (!error && loginUser) {
+    if (error) {
+      await resetStore();
+      return;
+    }
+
+    if (loginUser) {
       const loginUsername = loginUser.username || userInfo.userName;
       const displayName = loginUser.displayName || userInfo.displayName || loginUsername;
       const primaryRoleCode = loginUser.primaryRoleCode ?? userInfo.primaryRoleCode ?? null;
@@ -192,6 +317,8 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     resetStore,
     logout,
     login,
-    initUserInfo
+    loginByToken,
+    initUserInfo,
+    keepSessionAlive
   };
 });
